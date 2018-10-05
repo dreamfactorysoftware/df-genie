@@ -18,7 +18,7 @@ fi
 
 # Install a few helper packages
 
-apt install git curl zip unzip ca-certificates apt-transport-https
+apt install git curl zip unzip ca-certificates apt-transport-https composer
 wget -q https://packages.sury.org/php/apt.gpg -O- | sudo apt-key add -
 echo "deb https://packages.sury.org/php/ jessie main" | tee /etc/apt/sources.list.d/php.list
 
@@ -27,7 +27,7 @@ apt update
 apt upgrade
 
 # If PHP isn't installed, install it
-if [[ $PHP_VERSION == "undefined"]]; then
+if [ $PHP_VERSION == "undefined" ]; then
   apt install $DEFAULT_PHP_VERSION
 else
   echo "PHP version ${PHP_VERSION} installed."
@@ -87,3 +87,13 @@ echo "extension=sqlsrv.so" | sudo tee -a PHP_INI_LOC
 
 pecl install pdo_sqlsrv
 echo "extension=pdo_sqlsrv.so" | sudo tee -a PHP_INI_LOC
+
+######
+#
+# SQLAnywhere
+#
+######
+
+
+
+

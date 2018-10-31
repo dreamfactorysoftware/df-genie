@@ -16,23 +16,23 @@ clear
 #Check who run script. If not root or without sudo, exit.
 if (( $EUID  != 0 ));
 then
-   echo -e "${RD}\nPlease run script with sudo: sudo bash $0 \n${NC}"
+   echo -e "${RD} \nPlease run script with root privileges: su -c \"bash $0\" \n ${NC}"
    exit 1
 fi
 
 #Checking user from who was started script.
-CURRENT_USER=$(logname > /dev/null 2>&1)
+CURRENT_USER=$(logname)
 
 if [[ -z $SUDO_USER ]] && [[ -z $CURRENT_USER ]]
 then
-        echo -e "${RD} \n"
+	echo -e "${RD} \n"
         read -p "Enter username for installation DreamFactory:" CURRENT_USER
-        echo -e "${NC} \n"
+	echo -e "${NC} \n"
 fi
 
 if [[ ! -z $SUDO_USER ]]
 then
-        CURRENT_USER=${SUDO_USER}
+	CURRENT_USER=${SUDO_USER}
 fi
 
 echo -e "${GN}Step 1: Installing prerequisites applications...\n${NC}"
@@ -46,7 +46,8 @@ apt-get -qq install -y git \
 	software-properties-common \
 	lsof \
 	libmcrypt-dev \
-	libreadline-dev
+	libreadline-dev \
+	dirmngr
 
 #Checking status of installation
 if (( $? >= 1 ))
@@ -78,7 +79,9 @@ PHP_VERSION_INDEX=$(echo $PHP_VERSION | cut -c 4-6)
 
 
 # Install the php repository
-add-apt-repository ppa:ondrej/php -y
+
+curl -fsSL https://packages.sury.org/php/apt.gpg | apt-key add -
+add-apt-repository "deb https://packages.sury.org/php/ $(lsb_release -cs) main"
 
 # Update the system
 apt-get -qq update
@@ -95,7 +98,6 @@ apt-get -qq install ${PHP_VERSION}-common \
 	${PHP_VERSION}-zip \
 	${PHP_VERSION}-bcmath \
 	${PHP_VERSION}-dev \
-	${PHP_VERSION}-fpm
 
 if (( $? >= 1 ))
 then
@@ -142,72 +144,63 @@ phpenmod mongodb
 
 echo -e "${GN}PHP Extensions configured.\n${NC}"
 
-echo -e "${GN}Step 4: Installing Nginx...\n${NC}"
+echo -e "${GN}Step 4: Installing Apache2...\n${NC}"
 
-# Check nginx installation in the system
-ps aux | grep -v grep | grep nginx > /dev/null 2>&1
-CHECK_NGINX_PROCESS=`echo $?`
+# Check apache installation in the system
+ps aux | grep -v grep | grep apache2 > /dev/null 2>&1
+CHECK_APACHE_PROCESS=`echo $?`
 
-dpkg -l | grep nginx | cut -d " " -f 3 | grep -E "nginx$" > /dev/null 2>&1
-CHECK_NGINX_INSTALLATION=`echo $?`
+dpkg -l | grep apache2 | cut -d " " -f 3 | grep -E "apache2$" > /dev/null 2>&1
+CHECK_APACHE_INSTALLATION=`echo $?`
 
-if (( $CHECK_NGINX_PROCESS == 0 )) || (( $CHECK_NGINX_INSTALLATION == 0 ))
+if (( $CHECK_APACHE_PROCESS == 0 )) || (( $CHECK_APACHE_INSTALLATION == 0 ))
 then
-	echo -e  "${RD}Nginx detected in the system. Skipping installation Nginx. Configure Nginx manualy.\n${NC}"
+        echo -e  "${RD}Apache2 detected in the system. Skipping installation Apache2. Configure Apache2 manualy.\n${NC}"
 else
-        # Install nginx
-        #Cheking running web server
+        # Install Apache
+
+        #Cheking running web server on 80 port 
         lsof -i :80 | grep LISTEN > /dev/null 2>&1
         if (( $? == 0 ))
         then
-               	echo -e  "${RD}Some web server already running on http port.\n ${NC}"
-               	echo -e  "${RD}Skipping installation Nginx. Install Nginx manualy.\n ${NC}"
+                echo -e  "${RD}Some web server already running on http port.\n ${NC}"
+                echo -e  "${RD}Skipping installation Apache2. Install Apache2 manualy.\n ${NC}"
         else
-        	apt-get -qq install -y nginx
-        	if (( $? >= 1 ))
-            	  then
-                	echo -e  "${RD}\nSome error while installing...Exit ${NC}"
-                	exit 1
-        	fi
-        # Change php fpm configuration file
-        	sed -i 's/\;cgi\.fix\_pathinfo\=1/cgi\.fix\_pathinfo\=0/' $(php -i|sed -n '/^Loaded Configuration File => /{s:^.*> ::;p;}'| sed 's/cli/fpm/')	
-        
-        	cd /etc/nginx/sites-available
-        
-        # Create nginx site entry
-        	WEB_PATH=default
-                echo 'server {' > $WEB_PATH
-                echo 'listen 80 default_server;' >> $WEB_PATH
-                echo 'listen [::]:80 default_server ipv6only=on;' >> $WEB_PATH
-                echo 'root /opt/dreamfactory/public;' >> $WEB_PATH
-                echo 'index index.php index.html index.htm;' >> $WEB_PATH
-                echo 'server_name server_domain_name_or_IP;' >> $WEB_PATH
-                echo 'gzip on;' >> $WEB_PATH
-                echo 'gzip_disable "msie6";' >> $WEB_PATH
-                echo 'gzip_vary on;' >> $WEB_PATH
-                echo 'gzip_proxied any;' >> $WEB_PATH
-                echo 'gzip_comp_level 6;' >> $WEB_PATH
-                echo 'gzip_buffers 16 8k;' >> $WEB_PATH
-                echo 'gzip_http_version 1.1;' >> $WEB_PATH
-                echo 'gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript;' >> $WEB_PATH
-                echo 'location / {' >> $WEB_PATH
-                echo 'try_files $uri $uri/ /index.php?$args;}' >> $WEB_PATH
-                echo 'error_page 404 /404.html;' >> $WEB_PATH
-                echo 'error_page 500 502 503 504 /50x.html;' >> $WEB_PATH
-                echo 'location = /50x.html {' >> $WEB_PATH
-                echo 'root /usr/share/nginx/html;}' >> $WEB_PATH
-                echo 'location ~ \.php$ {' >> $WEB_PATH
-                echo 'try_files $uri =404;' >> $WEB_PATH
-                echo 'fastcgi_split_path_info ^(.+\.php)(/.+)$;' >> $WEB_PATH
-                echo "fastcgi_pass unix:/var/run/php/${PHP_VERSION}-fpm.sock;" >> $WEB_PATH
-                echo 'fastcgi_index index.php;' >> $WEB_PATH
-                echo 'fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;' >> $WEB_PATH
-                echo 'include fastcgi_params;}}' >> $WEB_PATH
-        	
-        
-        	service ${PHP_VERSION}-fpm restart && service nginx restart
-        
-        	echo -e "${GN}Nginx installed.\n${NC}"
+                apt-get -qq install -y apache2 libapache2-mod-${PHP_VERSION}
+                if (( $? >= 1 ))
+                  then
+                        echo -e  "${RD}\nSome error while installing...Exit ${NC}"
+                        exit 1
+                fi
+
+                a2enmod rewrite
+
+                cd /etc/apache2/sites-available
+
+        # Create apache2 site entry
+                WEB_PATH=000-default.conf
+                echo '<VirtualHost *:80>' > $WEB_PATH
+                echo 'DocumentRoot /opt/dreamfactory/public' >> $WEB_PATH
+                echo '<Directory /opt/dreamfactory/public>' >> $WEB_PATH
+                echo 'AddOutputFilterByType DEFLATE text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript' >> $WEB_PATH
+                echo 'Options -Indexes +FollowSymLinks -MultiViews' >> $WEB_PATH
+                echo 'AllowOverride All' >> $WEB_PATH
+                echo 'AllowOverride None' >> $WEB_PATH
+                echo 'Require all granted' >> $WEB_PATH
+                echo 'RewriteEngine on' >> $WEB_PATH
+                echo 'RewriteBase /' >> $WEB_PATH
+                echo 'RewriteCond %{REQUEST_FILENAME} !-f' >> $WEB_PATH
+                echo 'RewriteCond %{REQUEST_FILENAME} !-d' >> $WEB_PATH
+                echo 'RewriteRule ^.*$ /index.php [L]' >> $WEB_PATH
+                echo '<LimitExcept GET HEAD PUT DELETE PATCH POST>' >> $WEB_PATH
+                echo 'Allow from all' >> $WEB_PATH
+                echo '</LimitExcept>' >> $WEB_PATH
+                echo '</Directory>' >> $WEB_PATH
+                echo '</VirtualHost>' >> $WEB_PATH
+
+                service apache2 restart
+
+                echo -e "${GN}Apache2 installed.\n${NC}"
         fi
 fi
 
@@ -215,6 +208,7 @@ echo -e "${GN}Step 5: Installing Composer...\n${NC}"
 
 curl -sS https://getcomposer.org/installer -o /tmp/composer-setup.php
 
+#sudo -u $CURRENT_USER bash -c "mkdir $HOME/Composer && php /tmp/composer-setup.php --install-dir=/$HOME/Composer --filename=composer"
 php /tmp/composer-setup.php --install-dir=/usr/local/bin --filename=composer
 
 if (( $? >= 1 ))
@@ -224,6 +218,8 @@ then
 fi
 echo -e "${GN}Composer installed.\n${NC}"
 echo -e "${GN}Step 6: Installing DB for DreamFactory..\n${NC}"
+
+##Need add checking for alredy installed MariaDB 
 
 dpkg -l | grep mysql | cut -d " " -f 3 | grep -E "^mysql" | grep -E -v "^mysql-client" > /dev/null 2>&1
 CHECK_MYSQL_INSTALLATION=$(echo $?)
@@ -238,16 +234,16 @@ if (( $CHECK_MYSQL_PROCESS == 0 )) || (( $CHECK_MYSQL_INSTALLATION == 0 )) || ((
 then
 	echo -e  "${RD}MySQL DB detected in the system. Skipping installation. \n${NC}"
 else
-	CURRENT_OS=$(cat /etc/os-release | grep UBUNTU_CODENAME | cut -d "=" -f 2)
-        if [[ $CURRENT_OS == xenial ]]
+	CURRENT_OS=$(cat /etc/os-release | grep VERSION_ID | cut -d "=" -f 2 | cut -c 2)
+	if (( $CURRENT_OS == 9 ))
         then
-        	apt-key adv --recv-keys --keyserver hkp://keyserver.ubuntu.com:80 0xF1656F24C74CD1D8 
-        	add-apt-repository 'deb [arch=amd64,arm64,i386,ppc64el] http://mariadb.petarmaric.com/repo/10.3/ubuntu xenial main'
+        	apt-key adv --recv-keys --keyserver keyserver.ubuntu.com 0xF1656F24C74CD1D8
+        	add-apt-repository 'deb [arch=amd64,i386,ppc64el] http://mariadb.petarmaric.com/repo/10.3/debian stretch main'
         
-        elif [[ $CURRENT_OS == bionic ]]
+	elif (( $CURRENT_OS == 8 ))
         then
-        	apt-key adv --recv-keys --keyserver hkp://keyserver.ubuntu.com:80 0xF1656F24C74CD1D8
-        	add-apt-repository 'deb [arch=amd64,arm64,ppc64el] http://mariadb.petarmaric.com/repo/10.3/ubuntu bionic main'
+        	apt-key adv --recv-keys --keyserver keyserver.ubuntu.com 0xcbcb082a1bb943db
+		add-apt-repository 'deb [arch=amd64,i386,ppc64el] http://mariadb.petarmaric.com/repo/10.3/debian jessie main'
         fi
         
         apt-get -qq update
@@ -258,14 +254,12 @@ else
                 echo -e  "${RD}\nSome error while installing...Exit ${NC}"
                 exit 1
         fi
-
 	service mariadb start
-fi
-
-if (( $? >= 1 ))
-then
-        echo -e  "${RD}\nSome error while starting service...Exit ${NC}"
-        exit 1
+	if (( $? >= 1 ))
+	then
+        	echo -e  "${RD}\nSome error while starting service...Exit ${NC}"
+        	exit 1
+	fi
 fi
 
 echo -e "${GN}DB for DreamFactory installed.\n${NC}"
@@ -305,10 +299,10 @@ echo "FLUSH PRIVILEGES;" | mysql -u root -p${DB_PASS}  > /dev/null 2>&1
 echo -e "${GN}DB configuration finished.\n${NC}"
 echo -e "${GN}Step 7: Installing DreamFactory...\n ${NC}"
 
-#chown -R $CURRENT_USER $(sudo -u $CURRENT_USER bash -c "echo $HOME")/.composer
+#chown -R $CURRENT_USER $(su $CURRENT_USER -c "echo $HOME")/.composer
 
 mkdir /opt/dreamfactory && chown -R $CURRENT_USER /opt/dreamfactory && cd /opt/dreamfactory 
-sudo -u $CURRENT_USER bash -c "git clone https://github.com/dreamfactorysoftware/dreamfactory.git ./ && composer install --no-dev"
+su $CURRENT_USER -c 'git clone https://github.com/dreamfactorysoftware/dreamfactory.git ./ && composer install --no-dev'
 
 echo -e "\n "
 echo -e "${MG}******************************"
@@ -321,16 +315,16 @@ echo -e "* DB user: dfadmin           *"
 echo -e "* DB password: $(echo $DB_ADMIN_PASS | sed 's/['\'']//g')      *"
 echo -e "******************************${NC}\n"
 
-sudo -u $CURRENT_USER bash -c "php artisan df:env"
+su $CURRENT_USER -c "php artisan df:env"
 
 sed -i 's/\#\#DB\_CHARSET\=utf8/DB\_CHARSET\=utf8/g' .env
 sed -i 's/\#\#DB\_COLLATION\=utf8\_unicode\_ci/DB\_COLLATION\=utf8\_unicode\_ci/g' .env
 
 echo -e "\n"
-sudo -u $CURRENT_USER bash -c "php artisan df:setup"
+su $CURRENT_USER -c "php artisan df:setup"
 
 chown -R www-data:$CURRENT_USER storage/ bootstrap/cache/
 chmod -R 2775 storage/ bootstrap/cache/
-sudo -u $CURRENT_USER bash -c "php artisan cache:clear"
+su $CURRENT_USER -c "php artisan cache:clear"
 
 exit 0

@@ -21,24 +21,33 @@ then
 fi
 
 #Checking user from who was started script.
-CURRENT_USER=$(logname)
-if [[ $SUDO_USER != $CURRENT_USER ]]
+CURRENT_USER=$(logname > /dev/null 2>&1)
+
+if [[ -z $SUDO_USER ]] && [[ -z $CURRENT_USER ]]
 then
-        read -p "${RD}Enter username for installation DreamFactory:\n${NC}" CURRENT_USER
+        echo -e "${RD} \n"
+        read -p "Enter username for installation DreamFactory:" CURRENT_USER
+        echo -e "${NC} \n"
 fi
+
+if [[ ! -z $SUDO_USER ]]
+then
+        CURRENT_USER=${SUDO_USER}
+fi
+
 
 echo -e "${GN}Step 1: Installing prerequisites applications...\n${NC}"
 apt-get -qq update  
 apt-get -qq install -y git \
 	curl \
-       	zip \
-       	unzip \
-       	ca-certificates \
-       	apt-transport-https \
-       	software-properties-common \
+	zip \
+	unzip \
+	ca-certificates \
+	apt-transport-https \
+	software-properties-common \
 	lsof \
-       	libmcrypt-dev \
-       	libreadline-dev
+	libmcrypt-dev \
+	libreadline-dev
 
 #Checking status of installation
 if (( $? >= 1 ))
@@ -51,22 +60,23 @@ echo -e "${GN}The prerequisites applications installed.\n${NC}"
 
 echo -e "${GN}Step 2: Installing PHP...\n${NC}"
 
-# Obtain the PHP version. If PHP is not installed, identify
-# it as undefined.
-
 PHP_VERSION=$(php --version | head -n 1 | cut -d " " -f 2 | cut -c 1,3 )
-
+MCRYPT=0
 if [[ $PHP_VERSION =~ ^-?[0-9]+$ ]]
 then
-  if (( $PHP_VERSION >= 71 && $PHP_VERSION < 73 ))
-  then
-        PHP_VERSION=php$(echo $PHP_VERSION | cut -c 1).$(echo $PHP_VERSION | cut -c 2)
-  else
-        PHP_VERSION=${DEFAULT_PHP_VERSION}
-  fi
+	if (( $PHP_VERSION == 71 ))
+  	then
+		PHP_VERSION=php7.1
+		MCRYPT=1
+  	else
+		PHP_VERSION=${DEFAULT_PHP_VERSION}
+  	fi
 else
-  PHP_VERSION="undefined"
+	PHP_VERSION=${DEFAULT_PHP_VERSION}
 fi
+
+PHP_VERSION_INDEX=$(echo $PHP_VERSION | cut -c 4-6)
+
 
 # Install the php repository
 add-apt-repository ppa:ondrej/php -y
@@ -74,54 +84,26 @@ add-apt-repository ppa:ondrej/php -y
 # Update the system
 apt-get -qq update
 
-# If PHP isn't installed, install it
-if [ $PHP_VERSION == "undefined" ]
-then
-  PHP_INSTALLED=${DEFAULT_PHP_VERSION}	
-  PHP_VERSION_INDEX=$(echo $PHP_INSTALLED | cut -c 4-6)
-  apt-get -qq install -y ${DEFAULT_PHP_VERSION}-common\
-	  ${DEFAULT_PHP_VERSION}-xml\
-	  ${DEFAULT_PHP_VERSION}-cli\
-	  ${DEFAULT_PHP_VERSION}-curl\
-	  ${DEFAULT_PHP_VERSION}-json\
-	  ${DEFAULT_PHP_VERSION}-mysqlnd\
-	  ${DEFAULT_PHP_VERSION}-sqlite\
-	  ${DEFAULT_PHP_VERSION}-soap\
-	  ${DEFAULT_PHP_VERSION}-mbstring\
-	  ${DEFAULT_PHP_VERSION}-zip\
-	  ${DEFAULT_PHP_VERSION}-bcmath\
-	  ${DEFAULT_PHP_VERSION}-dev 
-  
-  if (( $? >= 1 ))
-    then
-       	echo -e  "${RD}\nSome error while installing...Exit ${NC}"
-       	exit 1
-  fi
-  echo -e "${GN}${DEFAULT_PHP_VERSION} installed.\n${NC}"
-else
-  PHP_INSTALLED=${PHP_VERSION}
-  PHP_VERSION_INDEX=$(echo $PHP_INSTALLED | cut -c 4-6)
-  apt-get -qq install ${PHP_VERSION}-common\
-	  ${PHP_VERSION}-xml\
-	  ${PHP_VERSION}-cli\
-	  ${PHP_VERSION}-curl\
-	  ${PHP_VERSION}-json\
-	  ${PHP_VERSION}-mysqlnd\
-	  ${PHP_VERSION}-sqlite\
-	  ${PHP_VERSION}-soap\
-	  ${PHP_VERSION}-mbstring\
-	  ${PHP_VERSION}-zip\
-	  ${PHP_VERSION}-bcmath\
-	  ${PHP_VERSION}-dev
+apt-get -qq install ${PHP_VERSION}-common \
+	${PHP_VERSION}-xml \
+	${PHP_VERSION}-cli \
+	${PHP_VERSION}-curl \
+	${PHP_VERSION}-json \
+	${PHP_VERSION}-mysqlnd \
+	${PHP_VERSION}-sqlite \
+	${PHP_VERSION}-soap \
+	${PHP_VERSION}-mbstring \
+	${PHP_VERSION}-zip \
+	${PHP_VERSION}-bcmath \
+	${PHP_VERSION}-dev \
 
-  if (( $? >= 1 ))
-    then
+if (( $? >= 1 ))
+then
         echo -e  "${RD}\nSome error while installing...Exit ${NC}"
         exit 1
-  fi
-  echo -e "${GN}${PHP_VERSION} installed.\n${NC}"
 fi
 
+echo -e "${GN}${PHP_VERSION} installed.\n${NC}"
 
 echo -e "${GN}Step 3: Configure PHP Extensions...\n${NC}"
 
@@ -135,14 +117,20 @@ fi
 
 pecl channel-update pecl.php.net
 
-printf "\n" | pecl -q install mcrypt-1.0.1
-if (( $? >= 1 ))
+if [[ $MCRYPT == 0 ]]
 then
-        echo -e  "${RD}\nSome error while installing...Exit ${NC}"
-        exit 1
+	printf "\n" | pecl -q install mcrypt-1.0.1
+	if (( $? >= 1 ))
+	then
+		echo -e  "${RD}\nSome error while installing...Exit ${NC}"
+		exit 1
+	fi
+	echo "extension=mcrypt.so" > /etc/php/${PHP_VERSION_INDEX}/mods-available/mcrypt.ini
+	phpenmod mcrypt
+else
+	apt-get -qq install ${PHP_VERSION}-mcrypt
 fi
-echo "extension=mcrypt.so" > /etc/php/${PHP_VERSION_INDEX}/mods-available/mcrypt.ini
-phpenmod mcrypt
+
 
 pecl -q install mongodb
 if (( $? >= 1 ))
@@ -177,7 +165,7 @@ else
                 echo -e  "${RD}Some web server already running on http port.\n ${NC}"
                 echo -e  "${RD}Skipping installation Apache2. Install Apache2 manualy.\n ${NC}"
         else
-               	apt-get -qq install -y apache2 libapache2-mod-${PHP_INSTALLED}
+               	apt-get -qq install -y apache2 libapache2-mod-${PHP_VERSION}
         	if (( $? >= 1 ))
             	  then
                 	echo -e  "${RD}\nSome error while installing...Exit ${NC}"
@@ -227,46 +215,55 @@ then
         echo -e  "${RD}\nSome error while installing...Exit ${NC}"
         exit 1
 fi
-echo -e "${GN}\nComposer installed.\n${NC}"
+echo -e "${GN}Composer installed.\n${NC}"
 echo -e "${GN}Step 6: Installing DB for DreamFactory..\n${NC}"
 
-##Need add checking for alredy installed MariaDB 
+dpkg -l | grep mysql | cut -d " " -f 3 | grep -E "^mysql" | grep -E -v "^mysql-client" > /dev/null 2>&1
+CHECK_MYSQL_INSTALLATION=$(echo $?)
 
+ps aux | grep -v grep | grep mysql > /dev/null 2>&1
+CHECK_MYSQL_PROCESS=$(echo $?)
 
+lsof -i :3306 | grep LISTEN > /dev/null 2>&1
+CHECK_MYSQL_PORT=$(echo $?)
 
-CURRENT_OS=$(cat /etc/os-release | grep UBUNTU_CODENAME | cut -d "=" -f 2)
-
-if [[ $CURRENT_OS == xenial ]]
+if (( $CHECK_MYSQL_PROCESS == 0 )) || (( $CHECK_MYSQL_INSTALLATION == 0 )) || (( $CHECK_MYSQL_PORT == 0 ))
 then
-	apt-key adv --recv-keys --keyserver hkp://keyserver.ubuntu.com:80 0xF1656F24C74CD1D8 
-	add-apt-repository 'deb [arch=amd64,arm64,i386,ppc64el] http://mariadb.petarmaric.com/repo/10.3/ubuntu xenial main'
+        echo -e  "${RD}MySQL DB detected in the system. Skipping installation. \n${NC}"
+else
+        CURRENT_OS=$(cat /etc/os-release | grep UBUNTU_CODENAME | cut -d "=" -f 2)
+        if [[ $CURRENT_OS == xenial ]]
+        then
+                apt-key adv --recv-keys --keyserver hkp://keyserver.ubuntu.com:80 0xF1656F24C74CD1D8
+                add-apt-repository 'deb [arch=amd64,arm64,i386,ppc64el] http://mariadb.petarmaric.com/repo/10.3/ubuntu xenial main'
 
-elif [[ $CURRENT_OS == bionic ]]
-then
-	apt-key adv --recv-keys --keyserver hkp://keyserver.ubuntu.com:80 0xF1656F24C74CD1D8
-	add-apt-repository 'deb [arch=amd64,arm64,ppc64el] http://mariadb.petarmaric.com/repo/10.3/ubuntu bionic main'
+        elif [[ $CURRENT_OS == bionic ]]
+        then
+                apt-key adv --recv-keys --keyserver hkp://keyserver.ubuntu.com:80 0xF1656F24C74CD1D8
+                add-apt-repository 'deb [arch=amd64,arm64,ppc64el] http://mariadb.petarmaric.com/repo/10.3/ubuntu bionic main'
+        fi
+
+        apt-get -qq update
+        apt-get -qq install -y mariadb-server
+
+        if (( $? >= 1 ))
+        then
+                echo -e  "${RD}\nSome error while installing...Exit ${NC}"
+                exit 1
+        fi
+
+        service mariadb start
 fi
-
-apt-get -qq update
-apt-get -qq install -y mariadb-server
-
-if (( $? >= 1 ))
-then
-        echo -e  "${RD}\nSome error while installing...Exit ${NC}"
-        exit 1
-fi
-
-echo -e "${GN}DB for DreamFactory installed.\n${NC}"
-
-echo -e "${GN}Step 6: Configure installed DB...\n${NC}"
-
-sudo service mariadb start
 
 if (( $? >= 1 ))
 then
         echo -e  "${RD}\nSome error while starting service...Exit ${NC}"
         exit 1
 fi
+
+echo -e "${GN}DB for DreamFactory installed.\n${NC}"
+
+echo -e "${GN}Step 6: Configure installed DB...\n${NC}"
 
 echo -e "${MG}Enter password for DB root user:\n ${NC} " 
 read -s DB_PASS
@@ -291,21 +288,18 @@ fi
 
 echo -e "${GN}Access confirmed.\n ${NC}"
 
-echo "CREATE DATABASE dreamfactory;" | mysql -u root -p${DB_PASS}
+echo "CREATE DATABASE dreamfactory;" | mysql -u root -p${DB_PASS}  > /dev/null 2>&1
 
 #Generate password for user in DB
 DB_ADMIN_PASS=\'$(date +%s | sha256sum | base64 | head -c 8)\'
-echo "GRANT ALL PRIVILEGES ON dreamfactory.* to 'dfadmin'@'localhost' IDENTIFIED BY ${DB_ADMIN_PASS};" | mysql -u root -p${DB_PASS}
-echo "FLUSH PRIVILEGES;" | mysql -u root -p${DB_PASS} 
+echo "GRANT ALL PRIVILEGES ON dreamfactory.* to 'dfadmin'@'localhost' IDENTIFIED BY ${DB_ADMIN_PASS};" | mysql -u root -p${DB_PASS}  > /dev/null 2>&1
+echo "FLUSH PRIVILEGES;" | mysql -u root -p${DB_PASS}   > /dev/null 2>&1
 
 echo -e "${GN}DB configuration finished.\n${NC}"
 echo -e "${GN}Step 7: Installing DreamFactory...\n ${NC}"
 
-chown -R $CURRENT_USER $(sudo -u $CURRENT_USER bash -c "echo $HOME")/.composer
-
 mkdir /opt/dreamfactory && chown -R $CURRENT_USER /opt/dreamfactory && cd /opt/dreamfactory 
 sudo -u $CURRENT_USER bash -c "git clone https://github.com/dreamfactorysoftware/dreamfactory.git ./ && composer install --no-dev"
-sudo -u $CURRENT_USER bash -c "echo $HOME"
 
 echo -e "\n "
 echo -e "${MG}******************************"

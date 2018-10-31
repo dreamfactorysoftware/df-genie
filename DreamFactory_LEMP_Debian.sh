@@ -16,23 +16,23 @@ clear
 #Check who run script. If not root or without sudo, exit.
 if (( $EUID  != 0 ));
 then
-   echo -e "${RD}\nPlease run script with sudo: sudo bash $0 \n${NC}"
+   echo -e "${RD} \nPlease run script with root privileges: su -c \"bash $0\" \n ${NC}"
    exit 1
 fi
 
 #Checking user from who was started script.
-CURRENT_USER=$(logname > /dev/null 2>&1)
+CURRENT_USER=$(logname)
 
 if [[ -z $SUDO_USER ]] && [[ -z $CURRENT_USER ]]
 then
-        echo -e "${RD} \n"
+	echo -e "${RD} \n"
         read -p "Enter username for installation DreamFactory:" CURRENT_USER
-        echo -e "${NC} \n"
+	echo -e "${NC} \n"
 fi
 
 if [[ ! -z $SUDO_USER ]]
 then
-        CURRENT_USER=${SUDO_USER}
+	CURRENT_USER=${SUDO_USER}
 fi
 
 echo -e "${GN}Step 1: Installing prerequisites applications...\n${NC}"
@@ -46,7 +46,8 @@ apt-get -qq install -y git \
 	software-properties-common \
 	lsof \
 	libmcrypt-dev \
-	libreadline-dev
+	libreadline-dev \
+	dirmngr
 
 #Checking status of installation
 if (( $? >= 1 ))
@@ -78,7 +79,9 @@ PHP_VERSION_INDEX=$(echo $PHP_VERSION | cut -c 4-6)
 
 
 # Install the php repository
-add-apt-repository ppa:ondrej/php -y
+
+curl -fsSL https://packages.sury.org/php/apt.gpg | apt-key add -
+add-apt-repository "deb https://packages.sury.org/php/ $(lsb_release -cs) main"
 
 # Update the system
 apt-get -qq update
@@ -215,6 +218,7 @@ echo -e "${GN}Step 5: Installing Composer...\n${NC}"
 
 curl -sS https://getcomposer.org/installer -o /tmp/composer-setup.php
 
+#sudo -u $CURRENT_USER bash -c "mkdir $HOME/Composer && php /tmp/composer-setup.php --install-dir=/$HOME/Composer --filename=composer"
 php /tmp/composer-setup.php --install-dir=/usr/local/bin --filename=composer
 
 if (( $? >= 1 ))
@@ -224,6 +228,8 @@ then
 fi
 echo -e "${GN}Composer installed.\n${NC}"
 echo -e "${GN}Step 6: Installing DB for DreamFactory..\n${NC}"
+
+##Need add checking for alredy installed MariaDB 
 
 dpkg -l | grep mysql | cut -d " " -f 3 | grep -E "^mysql" | grep -E -v "^mysql-client" > /dev/null 2>&1
 CHECK_MYSQL_INSTALLATION=$(echo $?)
@@ -238,16 +244,16 @@ if (( $CHECK_MYSQL_PROCESS == 0 )) || (( $CHECK_MYSQL_INSTALLATION == 0 )) || ((
 then
 	echo -e  "${RD}MySQL DB detected in the system. Skipping installation. \n${NC}"
 else
-	CURRENT_OS=$(cat /etc/os-release | grep UBUNTU_CODENAME | cut -d "=" -f 2)
-        if [[ $CURRENT_OS == xenial ]]
+	CURRENT_OS=$(cat /etc/os-release | grep VERSION_ID | cut -d "=" -f 2 | cut -c 2)
+	if (( $CURRENT_OS == 9 ))
         then
-        	apt-key adv --recv-keys --keyserver hkp://keyserver.ubuntu.com:80 0xF1656F24C74CD1D8 
-        	add-apt-repository 'deb [arch=amd64,arm64,i386,ppc64el] http://mariadb.petarmaric.com/repo/10.3/ubuntu xenial main'
+        	apt-key adv --recv-keys --keyserver keyserver.ubuntu.com 0xF1656F24C74CD1D8
+        	add-apt-repository 'deb [arch=amd64,i386,ppc64el] http://mariadb.petarmaric.com/repo/10.3/debian stretch main'
         
-        elif [[ $CURRENT_OS == bionic ]]
+	elif (( $CURRENT_OS == 8 ))
         then
-        	apt-key adv --recv-keys --keyserver hkp://keyserver.ubuntu.com:80 0xF1656F24C74CD1D8
-        	add-apt-repository 'deb [arch=amd64,arm64,ppc64el] http://mariadb.petarmaric.com/repo/10.3/ubuntu bionic main'
+        	apt-key adv --recv-keys --keyserver keyserver.ubuntu.com 0xcbcb082a1bb943db
+		add-apt-repository 'deb [arch=amd64,i386,ppc64el] http://mariadb.petarmaric.com/repo/10.3/debian jessie main'
         fi
         
         apt-get -qq update
@@ -258,14 +264,12 @@ else
                 echo -e  "${RD}\nSome error while installing...Exit ${NC}"
                 exit 1
         fi
-
 	service mariadb start
-fi
-
-if (( $? >= 1 ))
-then
-        echo -e  "${RD}\nSome error while starting service...Exit ${NC}"
-        exit 1
+	if (( $? >= 1 ))
+	then
+        	echo -e  "${RD}\nSome error while starting service...Exit ${NC}"
+        	exit 1
+	fi
 fi
 
 echo -e "${GN}DB for DreamFactory installed.\n${NC}"
@@ -305,10 +309,10 @@ echo "FLUSH PRIVILEGES;" | mysql -u root -p${DB_PASS}  > /dev/null 2>&1
 echo -e "${GN}DB configuration finished.\n${NC}"
 echo -e "${GN}Step 7: Installing DreamFactory...\n ${NC}"
 
-#chown -R $CURRENT_USER $(sudo -u $CURRENT_USER bash -c "echo $HOME")/.composer
+#chown -R $CURRENT_USER $(su $CURRENT_USER -c "echo $HOME")/.composer
 
 mkdir /opt/dreamfactory && chown -R $CURRENT_USER /opt/dreamfactory && cd /opt/dreamfactory 
-sudo -u $CURRENT_USER bash -c "git clone https://github.com/dreamfactorysoftware/dreamfactory.git ./ && composer install --no-dev"
+su $CURRENT_USER -c 'git clone https://github.com/dreamfactorysoftware/dreamfactory.git ./ && composer install --no-dev'
 
 echo -e "\n "
 echo -e "${MG}******************************"
@@ -321,16 +325,16 @@ echo -e "* DB user: dfadmin           *"
 echo -e "* DB password: $(echo $DB_ADMIN_PASS | sed 's/['\'']//g')      *"
 echo -e "******************************${NC}\n"
 
-sudo -u $CURRENT_USER bash -c "php artisan df:env"
+su $CURRENT_USER -c "php artisan df:env"
 
 sed -i 's/\#\#DB\_CHARSET\=utf8/DB\_CHARSET\=utf8/g' .env
 sed -i 's/\#\#DB\_COLLATION\=utf8\_unicode\_ci/DB\_COLLATION\=utf8\_unicode\_ci/g' .env
 
 echo -e "\n"
-sudo -u $CURRENT_USER bash -c "php artisan df:setup"
+su $CURRENT_USER -c "php artisan df:setup"
 
 chown -R www-data:$CURRENT_USER storage/ bootstrap/cache/
 chmod -R 2775 storage/ bootstrap/cache/
-sudo -u $CURRENT_USER bash -c "php artisan cache:clear"
+su $CURRENT_USER -c "php artisan cache:clear"
 
 exit 0

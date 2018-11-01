@@ -1,12 +1,14 @@
 #!/bin/bash
 #LEMP installation
 #Colors schemes for echo:
-RD='\033[0;31m'
-GN='\033[0;32m'
-MG='\033[0;95m'
+RD='\033[0;31m' #Red
+GN='\033[0;32m' #Green
+MG='\033[0;95m' #Magenta
 NC='\033[0m' # No Color
 
 DEFAULT_PHP_VERSION="php7.2"
+
+CURRENT_OS=$(cat /etc/os-release | grep VERSION_ID | cut -d "=" -f 2 | cut -c 2-3)
 
 #dev mode:
 #set -x
@@ -59,7 +61,7 @@ echo -e "${GN}The prerequisites applications installed.\n${NC}"
 
 echo -e "${GN}Step 2: Installing PHP...\n${NC}"
 
-PHP_VERSION=$(php --version | head -n 1 | cut -d " " -f 2 | cut -c 1,3 )
+PHP_VERSION=$(php --version 2> /dev/null | head -n 1 | cut -d " " -f 2 | cut -c 1,3 )
 MCRYPT=0
 if [[ $PHP_VERSION =~ ^-?[0-9]+$ ]]
 then
@@ -117,6 +119,7 @@ fi
 
 pecl channel-update pecl.php.net
 
+### MCRYPT
 if [[ $MCRYPT == 0 ]]
 then
 	printf "\n" | pecl -q install mcrypt-1.0.1
@@ -131,6 +134,7 @@ else
 	apt-get -qq install ${PHP_VERSION}-mcrypt
 fi
 
+### DRIVERS FOR MONGODB
 pecl -q install mongodb
 if (( $? >= 1 ))
 then
@@ -139,6 +143,43 @@ then
 fi
 echo "extension=mongodb.so" > /etc/php/${PHP_VERSION_INDEX}/mods-available/mongodb.ini
 phpenmod mongodb
+
+### DRIVERS FOR MSSQL (sqlsrv)
+curl https://packages.microsoft.com/keys/microsoft.asc | apt-key add -
+if (( $CURRENT_OS == 16 ))
+then
+	curl https://packages.microsoft.com/config/ubuntu/16.04/prod.list > /etc/apt/sources.list.d/mssql-release.list
+elif (( $CURRENT_OS == 18 ))
+then
+	curl https://packages.microsoft.com/config/ubuntu/18.04/prod.list > /etc/apt/sources.list.d/mssql-release.list
+else	
+	echo -e "${RD} The script support only Ubntu 16 and 18 versions. Exit.\n ${NC}"
+	exit 1
+fi
+apt-get -qq update
+ACCEPT_EULA=Y apt-get -qq install -y msodbcsql17 mssql-tools unixodbc-dev
+sudo -u $CURRENT_USER bash -c "echo export PATH=$PATH:/opt/mssql-tools/bin >> $HOME/.bash_profile"
+sudo -u $CURRENT_USER bash -c "echo export PATH=$PATH:/opt/mssql-tools/bin >> $HOME/.bashrc"
+sudo -u $CURRENT_USER bash -c "source $HOME/.bashrc"
+
+pecl -q install sqlsrv
+if (( $? >= 1 ))
+then
+        echo -e  "${RD}\nSome error while installing...Exit ${NC}"
+        exit 1
+fi
+echo "extension=sqlsrv.so" > /etc/php/${PHP_VERSION_INDEX}/mods-available/sqlsrv.ini
+phpenmod sqlsrv
+
+### DRIVERS FOR MSSQL (pdo_sqlsrv)
+pecl -q install pdo_sqlsrv
+if (( $? >= 1 ))
+then
+        echo -e  "${RD}\nSome error while installing...Exit ${NC}"
+        exit 1
+fi
+echo "extension=pdo_sqlsrv.so" > /etc/php/${PHP_VERSION_INDEX}/mods-available/pdo_sqlsrv.ini
+phpenmod pdo_sqlsrv
 
 echo -e "${GN}PHP Extensions configured.\n${NC}"
 
@@ -238,16 +279,18 @@ if (( $CHECK_MYSQL_PROCESS == 0 )) || (( $CHECK_MYSQL_INSTALLATION == 0 )) || ((
 then
 	echo -e  "${RD}MySQL DB detected in the system. Skipping installation. \n${NC}"
 else
-	CURRENT_OS=$(cat /etc/os-release | grep UBUNTU_CODENAME | cut -d "=" -f 2)
-        if [[ $CURRENT_OS == xenial ]]
+	if (( $CURRENT_OS == 16 ))
         then
         	apt-key adv --recv-keys --keyserver hkp://keyserver.ubuntu.com:80 0xF1656F24C74CD1D8 
         	add-apt-repository 'deb [arch=amd64,arm64,i386,ppc64el] http://mariadb.petarmaric.com/repo/10.3/ubuntu xenial main'
         
-        elif [[ $CURRENT_OS == bionic ]]
+	elif (( $CURRENT_OS == 18 ))
         then
         	apt-key adv --recv-keys --keyserver hkp://keyserver.ubuntu.com:80 0xF1656F24C74CD1D8
         	add-apt-repository 'deb [arch=amd64,arm64,ppc64el] http://mariadb.petarmaric.com/repo/10.3/ubuntu bionic main'
+	else
+		echo -e "${RD} The script support only Ubntu 16 and 18 versions. Exit.\n ${NC}"
+		exit 1
         fi
         
         apt-get -qq update
@@ -303,13 +346,46 @@ echo "GRANT ALL PRIVILEGES ON dreamfactory.* to 'dfadmin'@'localhost' IDENTIFIED
 echo "FLUSH PRIVILEGES;" | mysql -u root -p${DB_PASS}  > /dev/null 2>&1
 
 echo -e "${GN}DB configuration finished.\n${NC}"
+
 echo -e "${GN}Step 7: Installing DreamFactory...\n ${NC}"
 
 #chown -R $CURRENT_USER $(sudo -u $CURRENT_USER bash -c "echo $HOME")/.composer
+mkdir -p /opt/dreamfactory 
+git clone https://github.com/dreamfactorysoftware/dreamfactory.git /opt/dreamfactory
+if (( $? >= 1 ))
+then
+	echo -e  "${RD}\nSome error while installing...Exit ${NC}"
+	exit 1
+fi
+echo -e "${MG}"
+read -p 'Do you have subscription? [Yy/Nn] ' ANSWER  
+echo -e "${NC}"
+if [[ -z $ANSWER ]]
+then
+	ANSWER=N
+	echo -e "${RD}\nSkipping...${NC}"
+fi
+if [[ $ANSWER =~ ^[Yy]$ ]]
+then
+	echo -e "${MG}"
+	read -p "Enter paht to license files: [./] " LICENSE_PATH 
+       	if [[ -z $LICENSE_PATH ]]
+	then
+		LICENSE_PATH="."
+	fi
+	echo -e "${NC}"
+	cp -iv $LICENSE_PATH/composer.{json,lock} /opt/dreamfactory/
+	if (( $? >= 1 ))
+        then
+                echo -e  "${RD}\nLicenses not found. Skipping. ${NC}"
+        fi
+	echo -e "\n${GN}Licenses installed. ${NC}\n"
 
-mkdir /opt/dreamfactory && chown -R $CURRENT_USER /opt/dreamfactory && cd /opt/dreamfactory 
-sudo -u $CURRENT_USER bash -c "git clone https://github.com/dreamfactorysoftware/dreamfactory.git ./ && composer install --no-dev"
+fi
+chown -R $CURRENT_USER /opt/dreamfactory && cd /opt/dreamfactory 
 
+#sudo -u $CURRENT_USER bash -c "composer install --no-dev"
+sudo -u $CURRENT_USER bash -c "composer install --no-dev --ignore-platform-reqs"
 echo -e "\n "
 echo -e "${MG}******************************"
 echo -e "* Information for Step 7:    *"

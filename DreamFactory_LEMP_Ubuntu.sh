@@ -10,10 +10,17 @@ DEFAULT_PHP_VERSION="php7.2"
 
 CURRENT_OS=$(cat /etc/os-release | grep VERSION_ID | cut -d "=" -f 2 | cut -c 2-3)
 
+#CHECK FOR --oracle 
+case "$1" in
+        --oracle) ORACLE=TRUE
+	       	  DRIVERS_PATH=$2 ;;
+esac
+
+
 #dev mode:
 #set -x
 
-clear 
+clear
 
 #Check who run script. If not root or without sudo, exit.
 if (( $EUID  != 0 ));
@@ -23,7 +30,7 @@ then
 fi
 
 #Checking user from who was started script.
-CURRENT_USER=$(logname > /dev/null 2>&1)
+CURRENT_USER=$(logname)
 
 if [[ -z $SUDO_USER ]] && [[ -z $CURRENT_USER ]]
 then
@@ -38,7 +45,7 @@ then
 fi
 
 echo -e "${GN}Step 1: Installing prerequisites applications...\n${NC}"
-apt-get -qq update  
+apt-get -qq update > /dev/null 
 apt-get -qq install -y git \
 	curl \
 	zip \
@@ -83,7 +90,7 @@ PHP_VERSION_INDEX=$(echo $PHP_VERSION | cut -c 4-6)
 add-apt-repository ppa:ondrej/php -y
 
 # Update the system
-apt-get -qq update
+apt-get -qq update  > /dev/null
 
 apt-get -qq install ${PHP_VERSION}-common \
 	${PHP_VERSION}-xml \
@@ -120,67 +127,142 @@ fi
 pecl channel-update pecl.php.net
 
 ### MCRYPT
-if [[ $MCRYPT == 0 ]]
+php -m | grep mcrypt > /dev/null 2>&1
+if (( $? >= 1 ))
 then
-	printf "\n" | pecl -q install mcrypt-1.0.1
+	if [[ $MCRYPT == 0 ]]
+	then
+		printf "\n" | pecl -q install mcrypt-1.0.1
+		if (( $? >= 1 ))
+		then
+	        	echo -e  "${RD}\nSome error while installing...Exit ${NC}"
+	        	exit 1
+		fi
+		echo "extension=mcrypt.so" > /etc/php/${PHP_VERSION_INDEX}/mods-available/mcrypt.ini
+		phpenmod mcrypt
+	else
+		apt-get -qq install ${PHP_VERSION}-mcrypt
+	fi
+	php -m | grep "mcrypt" > /dev/null 2>&1
 	if (( $? >= 1 ))
 	then
-        	echo -e  "${RD}\nSome error while installing...Exit ${NC}"
-        	exit 1
+	        echo -e  "${RD}\nExtension Mcrypt have errors...${NC}"
 	fi
-	echo "extension=mcrypt.so" > /etc/php/${PHP_VERSION_INDEX}/mods-available/mcrypt.ini
-	phpenmod mcrypt
-else
-	apt-get -qq install ${PHP_VERSION}-mcrypt
 fi
 
 ### DRIVERS FOR MONGODB
-pecl -q install mongodb
+php -m | grep -E "^mongodb" > /dev/null 2>&1
 if (( $? >= 1 ))
 then
-        echo -e  "${RD}\nSome error while installing...Exit ${NC}"
-        exit 1
+	pecl -q install mongodb
+	if (( $? >= 1 ))
+	then
+	        echo -e  "${RD}\nSome error while installing...Exit ${NC}"
+	        exit 1
+	fi
+	echo "extension=mongodb.so" > /etc/php/${PHP_VERSION_INDEX}/mods-available/mongodb.ini
+	phpenmod mongodb
+	php -m | grep -E  "^mongodb" > /dev/null 2>&1
+	if (( $? >= 1 ))
+	then
+	        echo -e  "${RD}\nExtension for MongoDB have errors...${NC}"
+	fi
 fi
-echo "extension=mongodb.so" > /etc/php/${PHP_VERSION_INDEX}/mods-available/mongodb.ini
-phpenmod mongodb
 
 ### DRIVERS FOR MSSQL (sqlsrv)
-curl https://packages.microsoft.com/keys/microsoft.asc | apt-key add -
-if (( $CURRENT_OS == 16 ))
-then
-	curl https://packages.microsoft.com/config/ubuntu/16.04/prod.list > /etc/apt/sources.list.d/mssql-release.list
-elif (( $CURRENT_OS == 18 ))
-then
-	curl https://packages.microsoft.com/config/ubuntu/18.04/prod.list > /etc/apt/sources.list.d/mssql-release.list
-else	
-	echo -e "${RD} The script support only Ubntu 16 and 18 versions. Exit.\n ${NC}"
-	exit 1
-fi
-apt-get -qq update
-ACCEPT_EULA=Y apt-get -qq install -y msodbcsql17 mssql-tools unixodbc-dev
-sudo -u $CURRENT_USER bash -c "echo export PATH=$PATH:/opt/mssql-tools/bin >> $HOME/.bash_profile"
-sudo -u $CURRENT_USER bash -c "echo export PATH=$PATH:/opt/mssql-tools/bin >> $HOME/.bashrc"
-sudo -u $CURRENT_USER bash -c "source $HOME/.bashrc"
-
-pecl -q install sqlsrv
+php -m | grep -E "^sqlsrv" > /dev/null 2>&1
 if (( $? >= 1 ))
 then
-        echo -e  "${RD}\nSome error while installing...Exit ${NC}"
-        exit 1
-fi
-echo "extension=sqlsrv.so" > /etc/php/${PHP_VERSION_INDEX}/mods-available/sqlsrv.ini
-phpenmod sqlsrv
+	curl https://packages.microsoft.com/keys/microsoft.asc | apt-key add -
+	if (( $CURRENT_OS == 16 ))
+	then
+		curl https://packages.microsoft.com/config/ubuntu/16.04/prod.list > /etc/apt/sources.list.d/mssql-release.list
+	elif (( $CURRENT_OS == 18 ))
+	then
+		curl https://packages.microsoft.com/config/ubuntu/18.04/prod.list > /etc/apt/sources.list.d/mssql-release.list
+	else	
+		echo -e "${RD} The script support only Ubntu 16 and 18 versions. Exit.\n ${NC}"
+		exit 1
+	fi
+	apt-get -qq update  
+	ACCEPT_EULA=Y apt-get -qq install -y msodbcsql17 mssql-tools unixodbc-dev
+	sudo -u $CURRENT_USER bash -c "echo export PATH=$PATH:/opt/mssql-tools/bin >> $HOME/.bash_profile"
+	sudo -u $CURRENT_USER bash -c "echo export PATH=$PATH:/opt/mssql-tools/bin >> $HOME/.bashrc"
+	sudo -u $CURRENT_USER bash -c "source $HOME/.bashrc"
+	
+	pecl -q install sqlsrv
+	if (( $? >= 1 ))
+	then
+	        echo -e  "${RD}\nSome error while installing...Exit ${NC}"
+	        exit 1
+	fi
+	echo "extension=sqlsrv.so" > /etc/php/${PHP_VERSION_INDEX}/mods-available/sqlsrv.ini
+	phpenmod sqlsrv
+	php -m | grep -E  "^sqlsrv" > /dev/null 2>&1
+	if (( $? >= 1 ))
+	then
+	        echo -e  "${RD}\nExtension for MsSQL DB have errors...${NC}"
+	fi
+fi	
+
 
 ### DRIVERS FOR MSSQL (pdo_sqlsrv)
-pecl -q install pdo_sqlsrv
+php -m | grep -E "^pdo_sqlsrv" > /dev/null 2>&1
 if (( $? >= 1 ))
 then
-        echo -e  "${RD}\nSome error while installing...Exit ${NC}"
-        exit 1
+	pecl -q install pdo_sqlsrv
+	if (( $? >= 1 ))
+	then
+	        echo -e  "${RD}\nSome error while installing...Exit ${NC}"
+	        exit 1
+	fi
+	echo "extension=pdo_sqlsrv.so" > /etc/php/${PHP_VERSION_INDEX}/mods-available/pdo_sqlsrv.ini
+	phpenmod pdo_sqlsrv
+	php -m | grep -E  "^pdo_sqlsrv" > /dev/null 2>&1
+	if (( $? >= 1 ))
+	then
+		echo -e  "${RD}\nExtension for MsSQL DB have errors...${NC}"
+	fi
 fi
-echo "extension=pdo_sqlsrv.so" > /etc/php/${PHP_VERSION_INDEX}/mods-available/pdo_sqlsrv.ini
-phpenmod pdo_sqlsrv
 
+### DRIVERS FOR ORACLE ( ONLY WITH KEY --oracle )
+php -m | grep oci8 > /dev/null 2>&1
+if (( $? >= 1 ))
+then
+	if [[ $ORACLE == TRUE ]]
+	then
+		apt-get -qq install -y libaio1
+		echo -e "${MG}"
+		if [[ -z $DRIVERS_PATH ]]
+			then
+			DRIVERS_PATH="."
+		fi
+		echo -e "${NC}"
+		unzip "$DRIVERS_PATH/instantclient-*.zip" -d /opt/oracle > /dev/null 2>&1
+	        echo "/opt/oracle/instantclient_18_3" > /etc/ld.so.conf.d/oracle-instantclient.conf
+	        ldconfig
+	        sudo -u $CURRENT_USER bash -c "echo export LD_LIBRARY_PATH=/opt/oracle/instantclient_18_3:$LD_LIBRARY_PATH >> $HOME/.bash_profile"
+	        sudo -u $CURRENT_USER bash -c "echo export LD_LIBRARY_PATH=/opt/oracle/instantclient_18_3:$LD_LIBRARY_PATH >> $HOME/.bashrc"
+	        sudo -u $CURRENT_USER bash -c "echo export PATH=/opt/oracle/instantclient_18_3:$PATH >> $HOME/.bash_profile"
+	        sudo -u $CURRENT_USER bash -c "echo export PATH=/opt/oracle/instantclient_18_3:$PATH >> $HOME/.bashrc"
+	        sudo -u $CURRENT_USER bash -c "source $HOME/.bashrc"
+	        printf "instantclient,/opt/oracle/instantclient_18_3\n" | pecl -q install oci8
+	        if (( $? >= 1 ))
+		then
+	        	echo -e  "${RD}\nSome error while installing...Exit ${NC}"
+	        	exit 1
+		fi
+		echo "extension=oci8.so" > /etc/php/${PHP_VERSION_INDEX}/mods-available/oci8.ini
+	        phpenmod oci8
+		
+		php -m | grep oci8 > /dev/null 2>&1
+		if (( $? >= 1 ))
+	        then
+	                echo -e  "${RD}\nExtension for OracleDB have errors...${NC}"
+	        fi
+		
+	fi
+fi
 echo -e "${GN}PHP Extensions configured.\n${NC}"
 
 echo -e "${GN}Step 4: Installing Nginx...\n${NC}"
@@ -213,10 +295,8 @@ else
         # Change php fpm configuration file
         	sed -i 's/\;cgi\.fix\_pathinfo\=1/cgi\.fix\_pathinfo\=0/' $(php -i|sed -n '/^Loaded Configuration File => /{s:^.*> ::;p;}'| sed 's/cli/fpm/')	
         
-        	cd /etc/nginx/sites-available
-        
         # Create nginx site entry
-        	WEB_PATH=default
+        	WEB_PATH=/etc/nginx/sites-available/default
                 echo 'server {' > $WEB_PATH
                 echo 'listen 80 default_server;' >> $WEB_PATH
                 echo 'listen [::]:80 default_server ipv6only=on;' >> $WEB_PATH
@@ -264,7 +344,7 @@ then
         exit 1
 fi
 echo -e "${GN}Composer installed.\n${NC}"
-echo -e "${GN}Step 6: Installing DB for DreamFactory..\n${NC}"
+echo -e "${GN}Step 6: Installing DB for DreamFactory...\n${NC}"
 
 dpkg -l | grep mysql | cut -d " " -f 3 | grep -E "^mysql" | grep -E -v "^mysql-client" > /dev/null 2>&1
 CHECK_MYSQL_INSTALLATION=$(echo $?)
@@ -278,6 +358,7 @@ CHECK_MYSQL_PORT=$(echo $?)
 if (( $CHECK_MYSQL_PROCESS == 0 )) || (( $CHECK_MYSQL_INSTALLATION == 0 )) || (( $CHECK_MYSQL_PORT == 0 ))
 then
 	echo -e  "${RD}MySQL DB detected in the system. Skipping installation. \n${NC}"
+	DB_FOUND=TRUE
 else
 	if (( $CURRENT_OS == 16 ))
         then
@@ -313,57 +394,87 @@ fi
 
 echo -e "${GN}DB for DreamFactory installed.\n${NC}"
 
-echo -e "${GN}Step 6: Configure installed DB...\n${NC}"
+echo -e "${GN}Step 6: Configure installed Database...\n${NC}"
 
-echo -e "${MG}Enter password for DB root user:\n ${NC} " 
-read -s DB_PASS
+DB_INSTALLED=FALSE
 
-# Test access to DB
-mysql -h localhost -u root -p$DB_PASS -e"quit" > /dev/null 2>&1
-if (( $? >= 1 ))
+if [[ $DB_FOUND == TRUE ]]
 then
-	ACCESS=1
-	until (( $ACCESS == 0 ))
-	do
-		echo -e "${RD}Password incorrect!\n ${NC}"
-		echo -e "${MG}Enter correct password for root user:\n ${NC} "
-		read -s DB_PASS
-		mysql -h localhost -u root -p$DB_PASS -e"quit" > /dev/null 2>&1
-		if (( $? == 0 ))
-	       	then 
-			ACCESS=0
-	       	fi
-	done        
+	echo -e "${MG}"
+	read -p 'Database for DreamFactory configured already? [Yy/Nn] ' DB_ANSWER
+        echo -e "${NC}"
+	if [[ -z $DB_ANSWER ]]
+	then
+        	DB_ANSWER=N	
+	fi
+	if [[ $DB_ANSWER =~ ^[Yy]$ ]]
+	then
+		DB_INSTALLED=TRUE
+	fi
 fi
-
-echo -e "${GN}Access confirmed.\n ${NC}"
-
-echo "CREATE DATABASE dreamfactory;" | mysql -u root -p${DB_PASS} > /dev/null 2>&1
-
-#Generate password for user in DB
-DB_ADMIN_PASS=\'$(date +%s | sha256sum | base64 | head -c 8)\'
-echo "GRANT ALL PRIVILEGES ON dreamfactory.* to 'dfadmin'@'localhost' IDENTIFIED BY ${DB_ADMIN_PASS};" | mysql -u root -p${DB_PASS}  > /dev/null 2>&1
-echo "FLUSH PRIVILEGES;" | mysql -u root -p${DB_PASS}  > /dev/null 2>&1
-
-echo -e "${GN}DB configuration finished.\n${NC}"
-
+if [[ $DB_INSTALLED == FALSE ]]
+then
+	echo -e "${MG}Enter password for Database root user:\n ${NC} " 
+	read -s DB_PASS
+	
+	# Test access to DB
+	mysql -h localhost -u root -p$DB_PASS -e"quit" > /dev/null 2>&1
+	if (( $? >= 1 ))
+	then
+		ACCESS=1
+		until (( $ACCESS == 0 ))
+		do
+			echo -e "${RD}Password incorrect!\n ${NC}"
+			echo -e "${MG}Enter correct password for root user:\n ${NC} "
+			read -s DB_PASS
+			mysql -h localhost -u root -p$DB_PASS -e"quit" > /dev/null 2>&1
+			if (( $? == 0 ))
+		       	then 
+				ACCESS=0
+		       	fi
+		done        
+	fi
+	
+	echo -e "${GN}Access confirmed.\n ${NC}"
+	
+	echo "CREATE DATABASE dreamfactory;" | mysql -u root -p${DB_PASS} > /dev/null 2>&1
+	
+	#Generate password for user in DB
+	DB_ADMIN_PASS=\'$(date +%s | sha256sum | base64 | head -c 8)\'
+	echo "GRANT ALL PRIVILEGES ON dreamfactory.* to 'dfadmin'@'localhost' IDENTIFIED BY ${DB_ADMIN_PASS};" | mysql -u root -p${DB_PASS}  > /dev/null 2>&1
+	echo "FLUSH PRIVILEGES;" | mysql -u root -p${DB_PASS}  > /dev/null 2>&1
+	
+	echo -e "${GN}DB configuration finished.\n${NC}"
+else
+	echo -e "${GN}Skipping...\n${NC}"
+fi
+		
 echo -e "${GN}Step 7: Installing DreamFactory...\n ${NC}"
 
 #chown -R $CURRENT_USER $(sudo -u $CURRENT_USER bash -c "echo $HOME")/.composer
-mkdir -p /opt/dreamfactory 
-git clone https://github.com/dreamfactorysoftware/dreamfactory.git /opt/dreamfactory
+
+ls -d /opt/dreamfactory > /dev/null 2>&1
 if (( $? >= 1 ))
 then
-	echo -e  "${RD}\nSome error while installing...Exit ${NC}"
-	exit 1
+	mkdir -p /opt/dreamfactory
+	git clone https://github.com/dreamfactorysoftware/dreamfactory.git /opt/dreamfactory
+	if (( $? >= 1 ))
+	then
+        	echo -e  "${RD}\nSome error while installing...Exit ${NC}"
+        	exit 1
+	fi
+	DF_CLEAN_INSTALLATION=TRUE
+else
+	echo -e  "${RD}Folder with DreamFactory detected. Skipping installation DreamFactory...\n${NC}"
+	DF_CLEAN_INSTALLATION=FALSE
 fi
+
 echo -e "${MG}"
-read -p 'Do you have subscription? [Yy/Nn] ' ANSWER  
+read -p 'Do you have license? [Yy/Nn] ' ANSWER  
 echo -e "${NC}"
 if [[ -z $ANSWER ]]
 then
 	ANSWER=N
-	echo -e "${RD}\nSkipping...${NC}"
 fi
 if [[ $ANSWER =~ ^[Yy]$ ]]
 then
@@ -374,39 +485,47 @@ then
 		LICENSE_PATH="."
 	fi
 	echo -e "${NC}"
-	cp -iv $LICENSE_PATH/composer.{json,lock} /opt/dreamfactory/
+	cp $LICENSE_PATH/composer.{json,lock} /opt/dreamfactory/
 	if (( $? >= 1 ))
         then
-                echo -e  "${RD}\nLicenses not found. Skipping. ${NC}"
-        fi
-	echo -e "\n${GN}Licenses installed. ${NC}\n"
-
+                echo -e  "${RD}\nLicenses not found. Skipping.\n${NC}"
+        else
+		echo -e "\n${GN}Licenses installed. ${NC}\n"
+		LICENSE_INSTALLED=TRUE
+	fi
+else
+	echo -e  "${RD}Installing OSS version of the DreamFactory...\n${NC}"
 fi
 chown -R $CURRENT_USER /opt/dreamfactory && cd /opt/dreamfactory 
 
 #sudo -u $CURRENT_USER bash -c "composer install --no-dev"
 sudo -u $CURRENT_USER bash -c "composer install --no-dev --ignore-platform-reqs"
-echo -e "\n "
-echo -e "${MG}******************************"
-echo -e "* Information for Step 7:    *"
-echo -e "* DB for system table: mysql *"
-echo -e "* DB host: 127.0.0.1         *"
-echo -e "* DB port: 3306              *"
-echo -e "* DB name: dreamfactory      *"
-echo -e "* DB user: dfadmin           *"
-echo -e "* DB password: $(echo $DB_ADMIN_PASS | sed 's/['\'']//g')      *"
-echo -e "******************************${NC}\n"
-
-sudo -u $CURRENT_USER bash -c "php artisan df:env"
-
-sed -i 's/\#\#DB\_CHARSET\=utf8/DB\_CHARSET\=utf8/g' .env
-sed -i 's/\#\#DB\_COLLATION\=utf8\_unicode\_ci/DB\_COLLATION\=utf8\_unicode\_ci/g' .env
-
-echo -e "\n"
-sudo -u $CURRENT_USER bash -c "php artisan df:setup"
-
-chown -R www-data:$CURRENT_USER storage/ bootstrap/cache/
+if [[ $DB_INSTALLED == FALSE ]] 
+then
+	echo -e "\n "
+	echo -e "${MG}******************************"
+	echo -e "* DB for system table: mysql *"
+	echo -e "* DB host: 127.0.0.1         *"
+	echo -e "* DB port: 3306              *"
+	echo -e "* DB name: dreamfactory      *"
+	echo -e "* DB user: dfadmin           *"
+	echo -e "* DB password: $(echo $DB_ADMIN_PASS | sed 's/['\'']//g')      *"
+	echo -e "******************************${NC}\n"
+	sudo -u $CURRENT_USER bash -c "php artisan df:env"
+	sed -i 's/\#\#DB\_CHARSET\=utf8/DB\_CHARSET\=utf8/g' .env
+	sed -i 's/\#\#DB\_COLLATION\=utf8\_unicode\_ci/DB\_COLLATION\=utf8\_unicode\_ci/g' .env
+	echo -e "\n"
+fi
+if [[  $LICENSE_INSTALLED == TRUE && $DF_CLEAN_INSTALLATION == FALSE ]]
+then
+	mkdir -p /opt/dreamfactory/storage/framework/cache/data/55/bd/
+	php artisan migrate --seed
+	sudo -u $CURRENT_USER bash -c "php artisan config:clear"
+else
+	sudo -u $CURRENT_USER bash -c "php artisan df:setup"
+fi
 chmod -R 2775 storage/ bootstrap/cache/
+chown -R www-data:$CURRENT_USER storage/ bootstrap/cache/
 sudo -u $CURRENT_USER bash -c "php artisan cache:clear"
-
+echo -e "\n${GN}Installation finished ${NC}!"
 exit 0

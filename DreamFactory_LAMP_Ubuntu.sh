@@ -1,5 +1,5 @@
 #!/bin/bash
-#LEMP installation
+#LAMP installation
 #Colors schemes for echo:
 RD='\033[0;31m' #Red
 GN='\033[0;32m' #Green
@@ -264,7 +264,7 @@ then
 fi
 echo -e "${GN}PHP Extensions configured.\n${NC}"
 
-echo -e "${GN}Step 4: Installing Nginx...\n${NC}"
+echo -e "${GN}Step 4: Installing Apache...\n${NC}"
 
 # Check apache installation in the system
 ps aux | grep -v grep | grep apache2 > /dev/null 2>&1

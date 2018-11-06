@@ -1,5 +1,5 @@
 #!/bin/bash
-#LEMP installation
+#LAMP installation
 #Colors schemes for echo:
 RD='\033[0;31m' #Red
 GN='\033[0;32m' #Green
@@ -91,8 +91,7 @@ apt-get -qq install -y ${PHP_VERSION}-common \
 	${PHP_VERSION}-mbstring \
 	${PHP_VERSION}-zip \
 	${PHP_VERSION}-bcmath \
-	${PHP_VERSION}-dev \
-	${PHP_VERSION}-fpm
+	${PHP_VERSION}-dev 
 
 if (( $? >= 1 ))
 then
@@ -251,70 +250,56 @@ then
 fi
 echo -e "${GN}PHP Extensions configured.\n${NC}"
 
-echo -e "${GN}Step 4: Installing Nginx...\n${NC}"
-
-# Check nginx installation in the system
-ps aux | grep -v grep | grep nginx > /dev/null 2>&1
-CHECK_NGINX_PROCESS=`echo $?`
-
-dpkg -l | grep nginx | cut -d " " -f 3 | grep -E "nginx$" > /dev/null 2>&1
-CHECK_NGINX_INSTALLATION=`echo $?`
-
-if (( $CHECK_NGINX_PROCESS == 0 )) || (( $CHECK_NGINX_INSTALLATION == 0 ))
+echo -e "${GN}Step 4: Installing Apache...\n${NC}"
+# Check apache installation in the system
+ps aux | grep -v grep | grep apache2 > /dev/null 2>&1
+CHECK_APACHE_PROCESS=`echo $?`
+dpkg -l | grep apache2 | cut -d " " -f 3 | grep -E "apache2$" > /dev/null 2>&1
+CHECK_APACHE_INSTALLATION=`echo $?`
+if (( $CHECK_APACHE_PROCESS == 0 )) || (( $CHECK_APACHE_INSTALLATION == 0 ))
 then
-	echo -e  "${RD}Nginx detected in the system. Skipping installation Nginx. Configure Nginx manualy.\n${NC}"
-else
-        # Install nginx
-        #Cheking running web server
+        echo -e  "${RD}Apache2 detected in the system. Skipping installation Apache2. Configure Apache2 manualy.\n${NC}"
+else # Install Apache
+        #Cheking running web server on 80 port 
         lsof -i :80 | grep LISTEN > /dev/null 2>&1
         if (( $? == 0 ))
         then
-               	echo -e  "${RD}Some web server already running on http port.\n ${NC}"
-               	echo -e  "${RD}Skipping installation Nginx. Install Nginx manualy.\n ${NC}"
+                echo -e  "${RD}Some web server already running on http port.\n ${NC}"
+                echo -e  "${RD}Skipping installation Apache2. Install Apache2 manualy.\n ${NC}"
         else
-        	apt-get -qq install -y nginx
-        	if (( $? >= 1 ))
-            	  then
-                	echo -e  "${RD}\nSome error while installing...Exit ${NC}"
-                	exit 1
-        	fi
-        # Change php fpm configuration file
-        	sed -i 's/\;cgi\.fix\_pathinfo\=1/cgi\.fix\_pathinfo\=0/' $(php -i|sed -n '/^Loaded Configuration File => /{s:^.*> ::;p;}'| sed 's/cli/fpm/')	
-        
-        # Create nginx site entry
-        	WEB_PATH=/etc/nginx/sites-available/default
-                echo 'server {' > $WEB_PATH
-                echo 'listen 80 default_server;' >> $WEB_PATH
-                echo 'listen [::]:80 default_server ipv6only=on;' >> $WEB_PATH
-                echo 'root /opt/dreamfactory/public;' >> $WEB_PATH
-                echo 'index index.php index.html index.htm;' >> $WEB_PATH
-                echo 'server_name server_domain_name_or_IP;' >> $WEB_PATH
-                echo 'gzip on;' >> $WEB_PATH
-                echo 'gzip_disable "msie6";' >> $WEB_PATH
-                echo 'gzip_vary on;' >> $WEB_PATH
-                echo 'gzip_proxied any;' >> $WEB_PATH
-                echo 'gzip_comp_level 6;' >> $WEB_PATH
-                echo 'gzip_buffers 16 8k;' >> $WEB_PATH
-                echo 'gzip_http_version 1.1;' >> $WEB_PATH
-                echo 'gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript;' >> $WEB_PATH
-                echo 'location / {' >> $WEB_PATH
-                echo 'try_files $uri $uri/ /index.php?$args;}' >> $WEB_PATH
-                echo 'error_page 404 /404.html;' >> $WEB_PATH
-                echo 'error_page 500 502 503 504 /50x.html;' >> $WEB_PATH
-                echo 'location = /50x.html {' >> $WEB_PATH
-                echo 'root /usr/share/nginx/html;}' >> $WEB_PATH
-                echo 'location ~ \.php$ {' >> $WEB_PATH
-                echo 'try_files $uri =404;' >> $WEB_PATH
-                echo 'fastcgi_split_path_info ^(.+\.php)(/.+)$;' >> $WEB_PATH
-                echo "fastcgi_pass unix:/var/run/php/${PHP_VERSION}-fpm.sock;" >> $WEB_PATH
-                echo 'fastcgi_index index.php;' >> $WEB_PATH
-                echo 'fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;' >> $WEB_PATH
-                echo 'include fastcgi_params;}}' >> $WEB_PATH
-        	
-        
-        	service ${PHP_VERSION}-fpm restart && service nginx restart
-        
-        	echo -e "${GN}Nginx installed.\n${NC}"
+                apt-get -qq install -y apache2 libapache2-mod-${PHP_VERSION}
+                if (( $? >= 1 ))
+                  then
+                        echo -e  "${RD}\nSome error while installing...Exit ${NC}"
+                        exit 1
+                fi
+                a2enmod rewrite
+                        echo "extension=pdo_sqlsrv.so" >> /etc/php/${PHP_VERSION_INDEX}/apache2/conf.d/30-pdo_sqlsrv.ini
+                        echo "extension=sqlsrv.so" >> /etc/php/${PHP_VERSION_INDEX}/apache2/conf.d/20-sqlsrv.ini
+                # Create apache2 site entry
+                WEB_PATH=/etc/apache2/sites-available/000-default.conf
+		echo '<VirtualHost *:80>' > $WEB_PATH
+                echo 'DocumentRoot /opt/dreamfactory/public' >> $WEB_PATH
+                echo '<Directory /opt/dreamfactory/public>' >> $WEB_PATH
+                echo 'AddOutputFilterByType DEFLATE text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript' >> $WEB_PATH
+                echo 'Options -Indexes +FollowSymLinks -MultiViews' >> $WEB_PATH
+                echo 'AllowOverride All' >> $WEB_PATH
+                echo 'AllowOverride None' >> $WEB_PATH
+                echo 'Require all granted' >> $WEB_PATH
+                echo 'RewriteEngine on' >> $WEB_PATH
+                echo 'RewriteBase /' >> $WEB_PATH
+                echo 'RewriteCond %{REQUEST_FILENAME} !-f' >> $WEB_PATH
+                echo 'RewriteCond %{REQUEST_FILENAME} !-d' >> $WEB_PATH
+                echo 'RewriteRule ^.*$ /index.php [L]' >> $WEB_PATH
+                echo '<LimitExcept GET HEAD PUT DELETE PATCH POST>' >> $WEB_PATH
+                echo 'Allow from all' >> $WEB_PATH
+                echo '</LimitExcept>' >> $WEB_PATH
+                echo '</Directory>' >> $WEB_PATH
+                echo '</VirtualHost>' >> $WEB_PATH
+
+                service apache2 restart
+
+                echo -e "${GN}Apache2 installed.\n${NC}"
         fi
 fi
 
@@ -330,6 +315,7 @@ then
         exit 1
 fi
 echo -e "${GN}Composer installed.\n${NC}"
+
 echo -e "${GN}Step 6: Installing DB for DreamFactory...\n${NC}"
 
 dpkg -l | grep mysql | cut -d " " -f 3 | grep -E "^mysql" | grep -E -v "^mysql-client" > /dev/null 2>&1
@@ -481,7 +467,7 @@ else
 fi
 chown -R $CURRENT_USER /opt/dreamfactory && cd /opt/dreamfactory 
 
-su - $CURRENT_USER -c "composer install --no-dev --ignore-platform-reqs"
+su $CURRENT_USER -c "composer install --no-dev --ignore-platform-reqs"
 if [[ $DB_INSTALLED == FALSE ]] 
 then
 	echo -e "\n "
@@ -493,7 +479,7 @@ then
 	echo -e "* DB user: dfadmin           *"
 	echo -e "* DB password: $(echo $DB_ADMIN_PASS | sed 's/['\'']//g')      *"
 	echo -e "******************************${NC}\n"
-	su - $CURRENT_USER -c "php artisan df:env"
+	su $CURRENT_USER -c "php artisan df:env"
 	sed -i 's/\#\#DB\_CHARSET\=utf8/DB\_CHARSET\=utf8/g' .env
 	sed -i 's/\#\#DB\_COLLATION\=utf8\_unicode\_ci/DB\_COLLATION\=utf8\_unicode\_ci/g' .env
 	echo -e "\n"
@@ -502,12 +488,12 @@ if [[  $LICENSE_INSTALLED == TRUE && $DF_CLEAN_INSTALLATION == FALSE ]]
 then
 	mkdir -p /opt/dreamfactory/storage/framework/cache/data/55/bd/
 	php artisan migrate --seed
-	su - $CURRENT_USER -c "php artisan config:clear"
+	su $CURRENT_USER -c "php artisan config:clear"
 else
-	su - $CURRENT_USER -c "php artisan df:setup"
+	su $CURRENT_USER -c "php artisan df:setup"
 fi
 chmod -R 2775 storage/ bootstrap/cache/
 chown -R www-data:$CURRENT_USER storage/ bootstrap/cache/
-su - $CURRENT_USER -c "php artisan cache:clear"
+su $CURRENT_USER -c "php artisan cache:clear"
 echo -e "\n${GN}Installation finished ${NC}!"
 exit 0

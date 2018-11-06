@@ -1,11 +1,10 @@
-# DreamFactory installation script for Ubuntu 16/18
+# DreamFactory installation script for Debian 8/9
 
-This is semi-automatic installation script for Ubuntu 16.04 and 18.04 OS. The script assumes a more or less blank server. If you have existing resources installed on the server the script will skip installation some parts or you will need to work around them. This instruction assumes that  DreamFactory will be the only/default web app on this server. If you have other sites (virtual hosts) you will need to adjust the configuration accordingly.
+This is semi-automatic installation script for Debian 8 and Debian 9 OS. The script assumes a more or less blank server. If you have existing resources installed on the server the script will skip installation some parts or you will need to work around them. This instruction assumes that  DreamFactory will be the only/default web app on this server. If you have other sites (virtual hosts) you will need to adjust the configuration accordingly.
+
+**!Version PHP 7.0 and 7.1 not supporting. The script will install PHP version 7.2.**
 
 For example: 
-* If our server has already installed PHP version 7.1, the script will install all extensions for DreamFactory compatible with that version PHP.
-
-**!Version PHP 7.0 not supporting. The script will install PHP version 7.2.**
 * If your server has already installed Apache, Nginx or MySQL/MariaDB a script will show warning notification and skip installation/configuration.
 
 The script has two versions:
@@ -18,7 +17,7 @@ This instruction will get you a copy of the bash script and all steps to install
 
 ### Prerequisites
 
-You need Bash in your system (it must be already in your Ubuntu). Your license keys and Oracle drivers if you want to install it. If you do not have a license the sript will install open source version of DreamFactory. Also, you need root privileges and installed sudo in the system (it must be already in your Ubuntu by default).
+You need Bash in your system (it must be already in your Debian). Your license keys and Oracle drivers if you want to install it. If you do not have a license the sript will install open source version of DreamFactory. Also, you need root privileges(su).
 
 For connecting to Oracle DB you need to use drivers from Oracle. You can download it from official page Oracle:
 [Drivers](https://www.oracle.com/technetwork/topics/linuxx86-64soft-092277.html) Download the basic and sdk instant client files:
@@ -32,13 +31,13 @@ For connecting to Oracle DB you need to use drivers from Oracle. You can downloa
 Open folder where you save downloaded script via terminal. Add privileges to execute:
 
 ```
-sudo chmod +x DreamFactory_LEMP_Ubuntu.sh
+su -c "chmod +x DreamFactory_LEMP_Debian.sh"
 ```
 
 Start a script with root privileges:
 
 ```
-sudo bash DreamFactory_LEMP_Ubuntu.sh
+su -mc "bash  DreamFactory_LEMP_Debian.sh"
 ```
 
 If you have license keys you can copy them to the same folder where you saved DreamFactory script or you can type in the path to the folder with the keys in installation progress. 
@@ -50,11 +49,11 @@ After finishing the installation process you can access to DreamFactory by typin
 
 If you planning to use DreamFactory with Oracle DB, you must add --oracle key to a script. Also, download and save drivers to the same folder where you saved DreamFactory script or you can type in the path to the folder with the drivers after --oracle key:
 ```
-sudo bash DreamFactory_LEMP_Ubuntu.sh --oracle
+su -mc "bash  DreamFactory_LEMP_Debian.sh --oracle"
 ```
 
 ```
-sudo bash DreamFactory_LEMP_Ubuntu.sh --oracle /home/employee/drivers
+su -mc "bash  DreamFactory_LEMP_Debian.sh --oracle /home/employee/drivers"
 ```
 If you already have the DreamFacroty and want to install Oracle DB drivers. You need to do the same. Just start a script with --oracle key. 
 

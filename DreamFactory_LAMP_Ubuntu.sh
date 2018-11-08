@@ -1,6 +1,6 @@
 #!/bin/bash
-#LAMP installation
-#Colors schemes for echo:
+# LAMP installation
+# Colors schemes for echo:
 RD='\033[0;31m' #Red
 GN='\033[0;32m' #Green
 MG='\033[0;95m' #Magenta
@@ -10,38 +10,41 @@ DEFAULT_PHP_VERSION="php7.2"
 
 CURRENT_OS=$(cat /etc/os-release | grep VERSION_ID | cut -d "=" -f 2 | cut -c 2-3)
 
-#CHECK FOR --oracle 
+ORACLE=FALSE
+
+# CHECK FOR --oracle 
 case "$1" in
-        --oracle) ORACLE=TRUE
-	       	  DRIVERS_PATH=$2 ;;
+--oracle) 
+    ORACLE=TRUE
+    DRIVERS_PATH=$2
+    ;;
 esac
 
-
-#dev mode:
-#set -x
+# dev mode:
+# set -x
 
 clear
 
-#Check who run script. If not root or without sudo, exit.
+# Check who run script. If not root or without sudo, exit.
 if (( $EUID  != 0 ));
 then
-   echo -e "${RD}\nPlease run script with sudo: sudo bash $0 \n${NC}"
-   exit 1
+    echo -e "${RD}\nPlease run script with sudo: sudo bash $0 \n${NC}"
+    exit 1
 fi
 
-#Checking user from who was started script.
+# Checking user from who was started script.
 CURRENT_USER=$(logname)
 
 if [[ -z $SUDO_USER ]] && [[ -z $CURRENT_USER ]]
 then
-        echo -e "${RD} \n"
-        read -p "Enter username for installation DreamFactory:" CURRENT_USER
-        echo -e "${NC} \n"
+  echo -e "${RD} \n"
+  read -p "Enter username for installation DreamFactory:" CURRENT_USER
+  echo -e "${NC} \n"
 fi
 
 if [[ ! -z $SUDO_USER ]]
 then
-        CURRENT_USER=${SUDO_USER}
+    CURRENT_USER=${SUDO_USER}
 fi
 
 echo -e "${GN}Step 1: Installing prerequisites applications...\n${NC}"
@@ -57,7 +60,7 @@ apt-get -qq install -y git \
 	libmcrypt-dev \
 	libreadline-dev
 
-#Checking status of installation
+# Checking status of installation
 if (( $? >= 1 ))
 then
 	echo -e  "${RD}\nSome error while installing...Exit ${NC}"
@@ -262,6 +265,7 @@ then
 		
 	fi
 fi
+
 echo -e "${GN}PHP Extensions configured.\n${NC}"
 
 echo -e "${GN}Step 4: Installing Apache...\n${NC}"
@@ -320,6 +324,7 @@ else # Install Apache
         fi
 fi
 
+# Install and configure Composer
 echo -e "${GN}Step 5: Installing Composer...\n${NC}"
 
 curl -sS https://getcomposer.org/installer -o /tmp/composer-setup.php
@@ -328,8 +333,8 @@ php /tmp/composer-setup.php --install-dir=/usr/local/bin --filename=composer
 
 if (( $? >= 1 ))
 then
-        echo -e  "${RD}\nSome error while installing...Exit ${NC}"
-        exit 1
+    echo -e  "${RD}\nSome error while installing...Exit ${NC}"
+    exit 1
 fi
 echo -e "${GN}Composer installed.\n${NC}"
 echo -e "${GN}Step 6: Installing DB for DreamFactory...\n${NC}"
@@ -376,8 +381,8 @@ fi
 
 if (( $? >= 1 ))
 then
-        echo -e  "${RD}\nSome error while starting service...Exit ${NC}"
-        exit 1
+    echo -e  "${RD}\nSome error while starting service...Exit ${NC}"
+    exit 1
 fi
 
 echo -e "${GN}DB for DreamFactory installed.\n${NC}"
@@ -425,11 +430,25 @@ then
 	
 	echo -e "${GN}Access confirmed.\n ${NC}"
 	
-	echo "CREATE DATABASE dreamfactory;" | mysql -u root -p${DB_PASS} > /dev/null 2>&1
+    echo -e "${GN}Next we will create the DreamFactory system database.\n";
+
+    echo -e "${MG}"
+    read -p 'DreamFactory system database name: ' DB_ADMIN_NAME
+    echo -e "${NC}"
+
+
+	echo "CREATE DATABASE ${DB_ADMIN_NAME};" | mysql -u root -p${DB_PASS} > /dev/null 2>&1
 	
-	#Generate password for user in DB
-	DB_ADMIN_PASS=\'$(date +%s | sha256sum | base64 | head -c 8)\'
-	echo "GRANT ALL PRIVILEGES ON dreamfactory.* to 'dfadmin'@'localhost' IDENTIFIED BY ${DB_ADMIN_PASS};" | mysql -u root -p${DB_PASS}  > /dev/null 2>&1
+    echo -e "${MG}"
+    read -p 'Create a DreamFactory database user: ' DB_ADMIN_USER
+    echo -e "${NC}"
+	
+    # Generate password for user in DB
+    echo -e "${MG}"
+    read -p 'Create a DreamFactory database password: ' DB_ADMIN_PASS
+    echo -e "${NC}"
+
+    echo "GRANT ALL PRIVILEGES ON ${DB_ADMIN_NAME}.* to '${DB_ADMIN_USER}'@'localhost' IDENTIFIED BY ${DB_ADMIN_PASS};" | mysql -u root -p${DB_PASS}  > /dev/null 2>&1
 	echo "FLUSH PRIVILEGES;" | mysql -u root -p${DB_PASS}  > /dev/null 2>&1
 	
 	echo -e "${GN}DB configuration finished.\n${NC}"
@@ -444,17 +463,17 @@ echo -e "${GN}Step 7: Installing DreamFactory...\n ${NC}"
 ls -d /opt/dreamfactory > /dev/null 2>&1
 if (( $? >= 1 ))
 then
-        mkdir -p /opt/dreamfactory
-        git clone https://github.com/dreamfactorysoftware/dreamfactory.git /opt/dreamfactory
-        if (( $? >= 1 ))
-        then
-                echo -e  "${RD}\nSome error while installing...Exit ${NC}"
-                exit 1
-        fi
-        DF_CLEAN_INSTALLATION=TRUE
+    mkdir -p /opt/dreamfactory
+    git clone https://github.com/dreamfactorysoftware/dreamfactory.git /opt/dreamfactory
+    if (( $? >= 1 ))
+    then
+            echo -e  "${RD}\nSome error while installing...Exit ${NC}"
+            exit 1
+    fi
+    DF_CLEAN_INSTALLATION=TRUE
 else
-        echo -e  "${RD}Folder with DreamFactory detected. Skipping installation DreamFactory...\n${NC}"
-        DF_CLEAN_INSTALLATION=FALSE
+    echo -e  "${RD}Folder with DreamFactory detected. Skipping installation DreamFactory...\n${NC}"
+    DF_CLEAN_INSTALLATION=FALSE
 fi
 
 echo -e "${MG}"
@@ -462,56 +481,67 @@ read -p 'Do you have license? [Yy/Nn] ' ANSWER
 echo -e "${NC}"
 if [[ -z $ANSWER ]]
 then
-        ANSWER=N
+    ANSWER=N
 fi
 if [[ $ANSWER =~ ^[Yy]$ ]]
 then
-        echo -e "${MG}"
-        read -p "Enter paht to license files: [./] " LICENSE_PATH
-        if [[ -z $LICENSE_PATH ]]
-        then
-                LICENSE_PATH="."
-        fi
-        echo -e "${NC}"
-        cp $LICENSE_PATH/composer.{json,lock} /opt/dreamfactory/
-        if (( $? >= 1 ))
-        then
-                echo -e  "${RD}\nLicenses not found. Skipping.\n${NC}"
-        else
-                echo -e "\n${GN}Licenses installed. ${NC}\n"
-                LICENSE_INSTALLED=TRUE
-        fi
+    echo -e "${MG}"
+    read -p "Enter path to license files: [./] " LICENSE_PATH
+    if [[ -z $LICENSE_PATH ]]
+    then
+            LICENSE_PATH="."
+    fi
+    echo -e "${NC}"
+    cp $LICENSE_PATH/composer.{json,lock} /opt/dreamfactory/
+    if (( $? >= 1 ))
+    then
+            echo -e  "${RD}\nLicenses not found. Skipping.\n${NC}"
+    else
+            echo -e "\n${GN}Licenses installed. ${NC}\n"
+            LICENSE_INSTALLED=TRUE
+    fi
 else
-        echo -e  "${RD}Installing OSS version of the DreamFactory...\n${NC}"
+    echo -e  "${RD}Installing OSS version of the DreamFactory...\n${NC}"
 fi
+
 chown -R $CURRENT_USER /opt/dreamfactory && cd /opt/dreamfactory
 
-#sudo -u $CURRENT_USER bash -c "composer install --no-dev"
-sudo -u $CURRENT_USER bash -c "composer install --no-dev --ignore-platform-reqs"
+if [[ $ORACLE == TRUE ]]
+then
+    sudo -u $CURRENT_USER bash -c "composer install --no-dev"
+else
+    sudo -u $CURRENT_USER bash -c "composer install --no-dev --ignore-platform-reqs"
+fi
+
+    
 if [[ $DB_INSTALLED == FALSE ]]
 then
-        echo -e "\n "
-        echo -e "${MG}******************************"
-        echo -e "* DB for system table: mysql *"
-        echo -e "* DB host: 127.0.0.1         *"
-        echo -e "* DB port: 3306              *"
-        echo -e "* DB name: dreamfactory      *"
-        echo -e "* DB user: dfadmin           *"
-        echo -e "* DB password: $(echo $DB_ADMIN_PASS | sed 's/['\'']//g')      *"
-        echo -e "******************************${NC}\n"
-        sudo -u $CURRENT_USER bash -c "php artisan df:env"
-        sed -i 's/\#\#DB\_CHARSET\=utf8/DB\_CHARSET\=utf8/g' .env
-        sed -i 's/\#\#DB\_COLLATION\=utf8\_unicode\_ci/DB\_COLLATION\=utf8\_unicode\_ci/g' .env
-        echo -e "\n"
+    echo -e "\n "
+    echo -e "${MG}******************************"
+    echo -e "* DB for system table: mysql *"
+    echo -e "* DB host: 127.0.0.1         *"
+    echo -e "* DB port: 3306              *"
+    echo -e "* DB name: ${DB_ADMIN_NAME}  *"
+    echo -e "* DB user: ${DB_ADMIN_USER}  *"
+    echo -e "* DB password: $(echo $DB_ADMIN_PASS | sed 's/['\'']//g')      *"
+    echo -e "******************************${NC}\n"
+    sudo -u $CURRENT_USER bash -c "php artisan df:env"
+    sed -i 's/\#DB\_CHARSET\=utf8/DB\_CHARSET\=utf8/g' .env
+    sed -i 's/\#DB\_COLLATION\=utf8\_unicode\_ci/DB\_COLLATION\=utf8\_unicode\_ci/g' .env
+    echo -e "\n"
 fi
+
+if [[ $DF_CLEAN_INSTALLATION == FALSE ]]
+then
+    sudo -u $CURRENT_USER bash -c "php artisan df:setup"
+fi
+
 if [[  $LICENSE_INSTALLED == TRUE && $DF_CLEAN_INSTALLATION == FALSE ]]
 then
-        mkdir -p /opt/dreamfactory/storage/framework/cache/data/55/bd/
-        php artisan migrate --seed
-        sudo -u $CURRENT_USER bash -c "php artisan config:clear"
-else
-        sudo -u $CURRENT_USER bash -c "php artisan df:setup"
+    php artisan migrate --seed
+    sudo -u $CURRENT_USER bash -c "php artisan config:clear"
 fi
+
 chmod -R 2775 storage/ bootstrap/cache/
 chown -R www-data:$CURRENT_USER storage/ bootstrap/cache/
 sudo -u $CURRENT_USER bash -c "php artisan cache:clear"

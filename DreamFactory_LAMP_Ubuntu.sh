@@ -492,7 +492,7 @@ then
             LICENSE_PATH="."
     fi
     echo -e "${NC}"
-    cp $LICENSE_PATH/composer.{json,lock} /opt/dreamfactory/
+    cp $LICENSE_PATH/composer.{json,lock,json-dist} /opt/dreamfactory/
     if (( $? >= 1 ))
     then
             echo -e  "${RD}\nLicenses not found. Skipping.\n${NC}"
@@ -531,7 +531,7 @@ then
     echo -e "\n"
 fi
 
-if [[ $DF_CLEAN_INSTALLATION == FALSE ]]
+if [[ $DF_CLEAN_INSTALLATION == TRUE ]]
 then
     sudo -u $CURRENT_USER bash -c "php artisan df:setup"
 fi

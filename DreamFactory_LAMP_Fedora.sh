@@ -1,5 +1,5 @@
 #!/bin/bash
-#LEMP installation
+#LAMP installation
 #Colors schemes for echo:
 RD='\033[0;31m' #Red
 GN='\033[0;32m' #Green
@@ -51,7 +51,7 @@ dnf -q install -y git \
 	lsof \
 	libmcrypt-devel \
 	readline-devel \
-	libzip-devel 
+	libzip-devel
 #Checking status of installation
 if (( $? >= 1 ))
 then
@@ -66,8 +66,8 @@ echo -e "${GN}Step 2: Installing PHP...\n${NC}"
 # Install the php repository
 if  (( $CURRENT_OS == 27 ))
 then
-	dnf -q install -y  http://rpms.remirepo.net/fedora/remi-release-27.rpm
-	dnf config-manager --set-enabled remi-php72
+        dnf -q install -y  http://rpms.remirepo.net/fedora/remi-release-27.rpm
+        dnf config-manager --set-enabled remi-php72
 elif (( ! $CURRENT_OS == 28 ))
 then
 	echo -e "${RD} The script support only Fedora 27/28 versions. Exit.\n ${NC}"
@@ -78,7 +78,7 @@ fi
 if (( $CURRENT_OS == 27 ))
 then
 	dnf -q --enablerepo=remi-php72 install -y php-common \
-	php-xml \
+        php-xml \
         php-cli \
         php-curl \
         php-json \
@@ -87,8 +87,7 @@ then
         php-soap \
         php-mbstring \
         php-bcmath \
-        php-devel \
-        php-fpm
+        php-devel 
 else 
 	dnf -q install -y php-common \
         php-xml \
@@ -100,8 +99,8 @@ else
         php-soap \
         php-mbstring \
         php-bcmath \
-        php-devel \
-        php-fpm
+        php-devel 
+        	
 fi
 if (( $? >= 1 ))
 then
@@ -126,13 +125,13 @@ pecl channel-update pecl.php.net
 php -m | grep zip > /dev/null 2>&1
 if (( $? >= 1 ))
 then
-	pecl -q install zip
-	if (( $? >= 1 ))
+        pecl -q install zip
+        if (( $? >= 1 ))
         then
                 echo -e  "${RD}\nSome error while installing...Exit ${NC}"
                 exit 1
         fi
-	echo "extension=zip.so" > /etc/php.d/20-zip.ini
+        echo "extension=zip.so" > /etc/php.d/20-zip.ini
         php -m | grep "zip" > /dev/null 2>&1
         if (( $? >= 1 ))
         then
@@ -183,7 +182,7 @@ then
 	if (( $CURRENT_OS == 28 ))
 	then
 		curl https://packages.microsoft.com/config/rhel/7/prod.repo > /etc/yum.repos.d/mssql-release.repo
-	else 
+	else	
 		curl https://packages.microsoft.com/config/rhel/6/prod.repo > /etc/yum.repos.d/mssql-release.repo
 	fi
 	ACCEPT_EULA=Y yum -q install -y msodbcsql17 mssql-tools unixODBC-devel
@@ -266,78 +265,61 @@ then
 fi
 echo -e "${GN}PHP Extensions configured.\n${NC}"
 
-echo -e "${GN}Step 4: Installing Nginx...\n${NC}"
+echo -e "${GN}Step 4: Installing Apache...\n${NC}"
 
-# Check nginx installation in the system
-ps aux | grep -v grep | grep nginx > /dev/null 2>&1
+# Check Apache2 installation in the system
+ps aux | grep -v grep | grep httpd > /dev/null 2>&1
 CHECK_WEB_PROCESS=`echo $?`
 
-yum list installed | grep -E "^nginx.x86_64" > /dev/null 2>&1
+yum list installed | grep -E "^httpd.x86_64" > /dev/null 2>&1
 CHECK_WEB_INSTALLATION=`echo $?`
 
 if (( $CHECK_WEB_PROCESS == 0 )) || (( $CHECK_WEB_INSTALLATION == 0 ))
 then
-	echo -e  "${RD}Nginx detected in the system. Skipping installation Nginx. Configure Nginx manualy.\n${NC}"
+	echo -e  "${RD}Apache detected in the system. Skipping installation Apache. Configure Apache manualy.\n${NC}"
 else
-        # Install nginx
+        #Install apache
         #Cheking running web server
         lsof -i :80 | grep LISTEN > /dev/null 2>&1
         if (( $? == 0 ))
         then
                	echo -e  "${RD}Some web server already running on http port.\n ${NC}"
-               	echo -e  "${RD}Skipping installation Nginx. Install Nginx manualy.\n ${NC}"
+               	echo -e  "${RD}Skipping installation Apache. Install Apache manualy.\n ${NC}"
         else
-        	dnf -q install -y nginx
+        	dnf -q install -y httpd php
         	if (( $? >= 1 ))
             	  then
                 	echo -e  "${RD}\nSome error while installing...Exit ${NC}"
                 	exit 1
         	fi
-        # Change php fpm configuration file
-        	sed -i 's/\;cgi\.fix\_pathinfo\=1/cgi\.fix\_pathinfo\=0/' $(php -i|sed -n '/^Loaded Configuration File => /{s:^.*> ::;p;}')	
         
-        # Create nginx site entry
-        	WEB_PATH=/etc/nginx/conf.d/dreamfactory.conf
-                echo 'server {' > $WEB_PATH
-                echo 'listen 80 default_server;' >> $WEB_PATH
-                echo 'listen [::]:80 default_server ipv6only=on;' >> $WEB_PATH
-                echo 'root /opt/dreamfactory/public;' >> $WEB_PATH
-                echo 'index index.php index.html index.htm;' >> $WEB_PATH
-                echo 'server_name server_domain_name_or_IP;' >> $WEB_PATH
-                echo 'gzip on;' >> $WEB_PATH
-                echo 'gzip_disable "msie6";' >> $WEB_PATH
-                echo 'gzip_vary on;' >> $WEB_PATH
-                echo 'gzip_proxied any;' >> $WEB_PATH
-                echo 'gzip_comp_level 6;' >> $WEB_PATH
-                echo 'gzip_buffers 16 8k;' >> $WEB_PATH
-                echo 'gzip_http_version 1.1;' >> $WEB_PATH
-                echo 'gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript;' >> $WEB_PATH
-                echo 'location / {' >> $WEB_PATH
-                echo 'try_files $uri $uri/ /index.php?$args;}' >> $WEB_PATH
-                echo 'error_page 404 /404.html;' >> $WEB_PATH
-                echo 'error_page 500 502 503 504 /50x.html;' >> $WEB_PATH
-                echo 'location = /50x.html {' >> $WEB_PATH
-                echo 'root /usr/share/nginx/html;}' >> $WEB_PATH
-                echo 'location ~ \.php$ {' >> $WEB_PATH
-                echo 'try_files $uri =404;' >> $WEB_PATH
-                echo 'fastcgi_split_path_info ^(.+\.php)(/.+)$;' >> $WEB_PATH
-                echo "fastcgi_pass unix:/var/run/php-fpm/www.sock;" >> $WEB_PATH
-                echo 'fastcgi_index index.php;' >> $WEB_PATH
-                echo 'fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;' >> $WEB_PATH
-                echo 'include fastcgi_params;}}' >> $WEB_PATH
-        	
-       		#Need to remove default entry in nginx.conf 
-		grep default_server /etc/nginx/nginx.conf > /dev/null 2>&1
-		if (( $? == 0 ))
-		then
-			sed -i "s/default_server//g" /etc/nginx/nginx.conf         	
-		fi
-		service php-fpm restart && service nginx restart
-		systemctl enable nginx.service && systemctl enable php-fpm.service
-		
+        # Create  Apache site entry
+        	WEB_PATH=/etc/httpd/conf.d/dreamfactory.conf
+                echo '<VirtualHost *:80>' > $WEB_PATH
+                echo 'DocumentRoot /opt/dreamfactory/public' >> $WEB_PATH
+                echo '<Directory /opt/dreamfactory/public>' >> $WEB_PATH
+                echo 'AddOutputFilterByType DEFLATE text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript' >> $WEB_PATH
+                echo 'Options -Indexes +FollowSymLinks -MultiViews' >> $WEB_PATH
+                echo 'AllowOverride All' >> $WEB_PATH
+                echo 'AllowOverride None' >> $WEB_PATH
+                echo 'Require all granted' >> $WEB_PATH
+                echo 'RewriteEngine on' >> $WEB_PATH
+                echo 'RewriteBase /' >> $WEB_PATH
+                echo 'RewriteCond %{REQUEST_FILENAME} !-f' >> $WEB_PATH
+                echo 'RewriteCond %{REQUEST_FILENAME} !-d' >> $WEB_PATH
+                echo 'RewriteRule ^.*$ /index.php [L]' >> $WEB_PATH
+                echo '<LimitExcept GET HEAD PUT DELETE PATCH POST>' >> $WEB_PATH
+                echo 'Allow from all' >> $WEB_PATH
+                echo '</LimitExcept>' >> $WEB_PATH
+                echo '</Directory>' >> $WEB_PATH
+                echo '</VirtualHost>' >> $WEB_PATH
+	
+		service httpd restart
+		systemctl enable httpd.service 
+
 		firewall-cmd --add-service=http
 
-        	echo -e "${GN}Nginx installed.\n${NC}"
+        	echo -e "${GN}Apache installed.\n${NC}"
         fi
 fi
 
@@ -483,13 +465,13 @@ chown -R $CURRENT_USER /opt/dreamfactory && cd /opt/dreamfactory
 sudo -u $CURRENT_USER bash -c "/usr/local/bin/composer -q install --no-dev --ignore-platform-reqs"
 if [[ $DB_INSTALLED == FALSE ]] 
 then
-	sudo -u  $CURRENT_USER bash -c "php -q artisan df:env \
-		--db_connection=mysql \
-		--db_host=127.0.0.1 \
-		--db_port=3306 \
-		--db_database=dreamfactory \
-		--db_username=dfadmin \
-		--db_password=$(echo $DB_ADMIN_PASS | sed 's/['\'']//g')"
+        sudo -u  $CURRENT_USER bash -c "php -q artisan df:env \
+                --db_connection=mysql \
+                --db_host=127.0.0.1 \
+                --db_port=3306 \
+                --db_database=dreamfactory \
+                --db_username=dfadmin \
+                --db_password=$(echo $DB_ADMIN_PASS | sed 's/['\'']//g')"	
 	sed -i 's/\#\#DB\_CHARSET\=utf8/DB\_CHARSET\=utf8/g' .env
 	sed -i 's/\#\#DB\_COLLATION\=utf8\_unicode\_ci/DB\_COLLATION\=utf8\_unicode\_ci/g' .env
 	echo -e "\n"
@@ -497,7 +479,7 @@ fi
 if [[  $LICENSE_INSTALLED == TRUE && $DF_CLEAN_INSTALLATION == FALSE ]]
 then
 	mkdir -p /opt/dreamfactory/storage/framework/cache/data/55/bd/
-	php artisan migrate --seed
+	php -q artisan migrate --seed
 	sudo -u $CURRENT_USER bash -c "php -q artisan config:clear"
 else
 	sudo -u $CURRENT_USER bash -c "php -q artisan df:setup"

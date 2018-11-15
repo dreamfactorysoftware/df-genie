@@ -8,7 +8,7 @@ For example:
 **!Version PHP 7.0 not supporting. The script will install PHP version 7.2.**
 * If your server has already installed Apache, Nginx or MySQL/MariaDB a script will show warning notification and skip installation/configuration.
 
-By default, without any keys, a script will install DreamFactory with PHP extensions and Nginx web server **without any database server!**. 
+By default, without any keys, a script will install DreamFactory with PHP extensions and Nginx web server **without any database server!**
 
 As options, the script has next keys:
 

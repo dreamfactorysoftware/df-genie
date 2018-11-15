@@ -104,7 +104,7 @@ sudo bash DreamFactory_Ubuntu.sh --apache --oracle --with-mysql
 Using **su** to start the script:
 
 ```
-su -mc "bash DreamFactory_Ubuntu.sh"
+su -c "bash DreamFactory_Ubuntu.sh"
 ```
 
 ## Troubleshooting

@@ -109,4 +109,4 @@ su -mc "bash DreamFactory_Ubuntu.sh"
 
 ## Troubleshooting
 
-If you get an error at some stage of the installation, fix it and run the script again. The script shows the
+If you get an error at some stage of the installation, fix it and run the script again. The script shows the installation steps to understand at what stage you have a problem.

@@ -61,7 +61,19 @@ After finishing the installation process you can access to DreamFactory by typin
 
 Just add key: ```--with-mysql``` to the end of the script and that's all!. The script will do all automatically. In the installation progress, the script will show a password for the root user for the installed database server.
 
+```
+sudo bash DreamFactory_Ubuntu.sh --with-mysql
+```
+
 **! If you already have MariDB/MySQL server you need start script without ```--with-mysql``` key. But if you want more automatic installation, you can start the script with that key and script will prompt root user password for the already installed database. After you type in the password installation will continue and will stop only on the license key installation and new user creation.**
+
+### Installing with Apache2 web server
+
+Start the script with ```--apache``` key.
+
+```
+sudo bash DreamFactory_Ubuntu.sh --apache
+```
 
 ### Installing Oracle DB drivers 
 
@@ -81,6 +93,19 @@ If you already have the DreamFacroty and want to install Oracle DB drivers. You 
 Simply start the script again and on "Do you have a subscription? [Yy/Nn]" answer "Y". And on next prompt enter path to the folder with keys. The script will copy keys and will do all migrations. At the end check your accessibility to new features in the browser. 
 
 **!The default path to keys: the current folder where you start a script.**
+
+### Example
+
+Start the script with all keys:
+
+```
+sudo bash DreamFactory_Ubuntu.sh --apache --oracle --with-mysql
+```
+Using **su** to start the script:
+
+```
+su -mc "bash DreamFactory_Ubuntu.sh"
+```
 
 ## Troubleshooting
 

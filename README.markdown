@@ -29,6 +29,8 @@ If you do not provide this option then the script assumes you've already install
 * SQLite
 * MS SQL Server
 
+In the case of MySQL, PostgreSQL, and MS SQL Server you'll be prompted to provide an *existing* database name, database username, and database password.
+
 ### Enabling Oracle
 
 Passing the ```--oracle``` option will result in installation of PHP's Oracle (oci8) extension. You will need to supply a Silver or Gold license files to enable this functionality. If you choose this option you'll be prompted to identify the location of the the Oracle instant client zip files by providing an absolute path. Due to licensing restrictions we are unable to include these files with the installer, however you can download these files from [here](https://www.oracle.com/technetwork/topics/linuxx86-64soft-092277.html). You can pass the option like this:

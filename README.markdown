@@ -1,111 +1,65 @@
 # DreamFactory installation script for Ubuntu 16/18
 
-This is semi-automatic installation script for Ubuntu 16.04 and 18.04 OS. The script assumes a more or less blank server. If you have existing resources installed on the server the script will skip installation some parts or you will need to work around them. This instruction assumes that  DreamFactory will be the only/default web app on this server. If you have other sites (virtual hosts) you will need to adjust the configuration accordingly.
+This is a DreamFactory installation wizard for Ubuntu 16.04 and 18.04. 
 
-For example: 
-* If our server has already installed PHP version 7.1, the script will install all extensions for DreamFactory compatible with that version PHP.
+### Installation Requirements 
 
-**!Version PHP 7.0 not supporting. The script will install PHP version 7.2.**
-* If your server has already installed Apache, Nginx or MySQL/MariaDB a script will show warning notification and skip installation/configuration.
+For this wizard to work properly several conditions must be met:
 
-By default, without any keys, a script will install DreamFactory with PHP extensions and Nginx web server **without any database server!**
+* The wizard will be run on a fresh Ubuntu installation. If you have existing resources installed on the server the script will skip installation some steps and you may need to manyally perform additional configuration steps.
+* DreamFactory will be the only web app running on this server. If you intend to run other sites using virtual hosts you will need to adjust the configuration to suit this requirement.
+* If the server has already installed PHP version 7.1, the script will install all extensions for DreamFactory compatible with that version PHP. Otherwise PHP 7.2 will be installed. DreamFactory no longer supports PHP 7.0.
+* The executing user must be able to use sudo to run the installer.
+* You'll need to make the script executable by changing its permissions (`sudo chmod +x DreamFactory_Ubuntu.sh`)
 
-As options, the script has next keys:
+## Installation Options
 
-  ```--with-mysql```  The script will additionally install MariaDB and configure access DreamFactory to the installed database.
-  
-  ```--oracle```  The script will additionally install PHP extension to work with Oracle database.
-  
-  ```--apache```  The DreamFactory will be installed with Apache2 web server instead default Nginx web server.
+You may pass several options into the script to alter its behavior. If you do not use these options, the script will install the Nginx web server, DreamFactory, and the required system and PHP extensions, but will *not install a database server*. During the script's execution you have the option to choose the SQLite database for your DreamFactory system database, which does not require any additional installation or configuration steps.
 
-## Getting Started
+### Installing MySQL
 
-This instruction will get you a copy of the bash script and all steps to install DreamFactory on your system.
+Passing the ```--with-mysql``` option will result in installation of the MariaDB database. It will be used to house the system database. You can pass the option like this:
 
-### Prerequisites
+    $ sudo ./dreamfactory_ubuntu --with-mysql
 
-You need Bash in your system (it must be already in your Ubuntu). Your license keys and Oracle drivers if you want to install it. If you do not have a license the sript will install open source version of DreamFactory. Also, you need root privileges and installed sudo in the system (it must be already in your Ubuntu by default).
-If you choose installation without ```--with-mysql``` key you need already installed database server and root access to it. DreamFactory can work with next databases:
-* SQLite
+If you do not provide this option then the script assumes you've already installed a database server and have root access to it. You'll be prompted to choose one of the following supported system databases:
+
 * MySQL
-* pgSQL
-* SQL Server
+* PostgreSQL 
+* SQLite
+* MS SQL Server
 
-For connecting to Oracle DB you need to use drivers from Oracle. You can download it from official page Oracle:
-[Drivers](https://www.oracle.com/technetwork/topics/linuxx86-64soft-092277.html) Download the basic and sdk instant client files:
+### Enabling Oracle
+
+Passing the ```--oracle``` option will result in installation of PHP's Oracle (oci8) extension. You will need to supply a Silver or Gold license files to enable this functionality. If you choose this option you'll be prompted to identify the location of the the Oracle instant client zip files by providing an absolute path. Due to licensing restrictions we are unable to include these files with the installer, however you can download these files from [here](https://www.oracle.com/technetwork/topics/linuxx86-64soft-092277.html). You can pass the option like this:
+
+    $ sudo ./dreamfactory_ubuntu --with-oracle
+
+After navigating to the Oracle website you'll want to download the basic and sdk instant client files:
+
 * instantclient-basic-linux.x64-18.3.0.0.0dbru.zip
 * instantclient-sdk-linux.x64-18.3.0.0.0dbru.zip
 
-**The script is using only the latest version of Oracle drivers (18.3.0)**
+You should not unzip these files. Just upload them to your server and write down the absolute path to their location as you'll need to supply this path during the installation process.
 
-### Installing
+The script only supports the latest version of Oracle drivers (18.3.0).
 
-Open folder where you save downloaded script via terminal. Add privileges to execute:
+### Installing Apache
 
-```
-sudo chmod +x DreamFactory_Ubuntu.sh
-```
+Passing the ```--apache``` option will result in the Apache 2 web server being installed instead of the default Nginx web server. You can pass the option like this:
 
-Start a script with root privileges:
+    $ sudo ./dreamfactory_ubuntu --apache
 
-```
-sudo bash DreamFactory_Ubuntu.sh
-```
+### Supplying Multiple Options
 
-If you have license keys you can copy them to the same folder where you saved DreamFactory script or you can type in the path to the folder with the keys in installation progress. 
+You can supply multiple options to the installer like so:
 
-Follow the installation process. 
+    $ sudo ./dreamfactory_ubuntu.sh --apache --oracle --with-mysql
+
+
+### Accessing Your DreamFactory Installation
+
 After finishing the installation process you can access to DreamFactory by typing your IP address or localhost in the browser. You should be directed to the login page of the admin application.
-
-### Installing with MariaDB database server
-
-Just add key: ```--with-mysql``` to the end of the script and that's all!. The script will do all automatically. In the installation progress, the script will show a password for the root user for the installed database server.
-
-```
-sudo bash DreamFactory_Ubuntu.sh --with-mysql
-```
-
-**! If you already have MariDB/MySQL server you need start script without ```--with-mysql``` key. But if you want more automatic installation, you can start the script with that key and script will prompt root user password for the already installed database. After you type in the password installation will continue and will stop only on the license key installation and new user creation.**
-
-### Installing with Apache2 web server
-
-Start the script with ```--apache``` key.
-
-```
-sudo bash DreamFactory_Ubuntu.sh --apache
-```
-
-### Installing Oracle DB drivers 
-
-If you planning to use DreamFactory with Oracle DB, you must add ```--oracle key``` to a script. Also, download and save drivers to the same folder where you saved DreamFactory script or you can type in the path to the folder with the drivers in installation progress:
-
-```
-sudo bash DreamFactory_Ubuntu.sh --oracle
-```
-
-If you already have the DreamFacroty and want to install Oracle DB drivers. You need to do the same. Just start a script with ```--oracle``` key. 
-
-**!The default path to drivers: the current folder where you start a script.**
-**!To use Oracle DB connection feature, you need to have the Silver or Gold subscription**
-
-### Updating license
-
-Simply start the script again and on "Do you have a subscription? [Yy/Nn]" answer "Y". And on next prompt enter path to the folder with keys. The script will copy keys and will do all migrations. At the end check your accessibility to new features in the browser. 
-
-**!The default path to keys: the current folder where you start a script.**
-
-### Example
-
-Start the script with all keys:
-
-```
-sudo bash DreamFactory_Ubuntu.sh --apache --oracle --with-mysql
-```
-Using **su** to start the script:
-
-```
-su -c "bash DreamFactory_Ubuntu.sh"
-```
 
 ## Troubleshooting
 

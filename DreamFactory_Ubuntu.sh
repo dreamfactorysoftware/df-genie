@@ -15,9 +15,9 @@ CURRENT_OS=$(cat /etc/os-release | grep VERSION_ID | cut -d "=" -f 2 | cut -c 2-
 while [[ -n $1 ]]
 do
 	case "$1" in
-        	--oracle) ORACLE=TRUE;;
+        	--with-oracle) ORACLE=TRUE;;
 		--with-mysql) MYSQL=TRUE;;
-		--apache) APACHE=TRUE;;
+		--with-apache) APACHE=TRUE;;
 	esac
 shift
 done

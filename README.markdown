@@ -20,7 +20,7 @@ You may pass several options into the script to alter its behavior. If you do no
 
 Passing the ```--with-mysql``` option will result in installation of the MariaDB database. It will be used to house the system database. You can pass the option like this:
 
-    $ sudo ./dreamfactory_ubuntu --with-mysql
+    $ sudo ./dreamfactory_ubuntu.sh --with-mysql
 
 If you do not provide this option then the script assumes you've already installed a database server and have root access to it. You'll be prompted to choose one of the following supported system databases:
 
@@ -33,7 +33,7 @@ If you do not provide this option then the script assumes you've already install
 
 Passing the ```--oracle``` option will result in installation of PHP's Oracle (oci8) extension. You will need to supply a Silver or Gold license files to enable this functionality. If you choose this option you'll be prompted to identify the location of the the Oracle instant client zip files by providing an absolute path. Due to licensing restrictions we are unable to include these files with the installer, however you can download these files from [here](https://www.oracle.com/technetwork/topics/linuxx86-64soft-092277.html). You can pass the option like this:
 
-    $ sudo ./dreamfactory_ubuntu --with-oracle
+    $ sudo ./dreamfactory_ubuntu.sh --with-oracle
 
 After navigating to the Oracle website you'll want to download the basic and sdk instant client files:
 
@@ -48,7 +48,7 @@ The script only supports the latest version of Oracle drivers (18.3.0).
 
 Passing the ```--apache``` option will result in the Apache 2 web server being installed instead of the default Nginx web server. You can pass the option like this:
 
-    $ sudo ./dreamfactory_ubuntu --apache
+    $ sudo ./dreamfactory_ubuntu.sh --apache
 
 ### Supplying Multiple Options
 

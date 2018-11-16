@@ -1,5 +1,5 @@
 #!/bin/bash
-#Colors schemes for echo:
+# Colors schemes for echo:
 RD='\033[0;31m' #Red
 GN='\033[0;32m' #Green
 MG='\033[0;95m' #Magenta
@@ -7,9 +7,11 @@ NC='\033[0m' # No Color
 
 DEFAULT_PHP_VERSION="php7.2"
 
+ERROR_STRING="Installation error. Exiting"
+
 CURRENT_OS=$(cat /etc/os-release | grep VERSION_ID | cut -d "=" -f 2 | cut -c 2-3)
 
-#CHECK FOR KEYS
+# CHECK FOR KEYS
 while [[ -n $1 ]]
 do
 	case "$1" in
@@ -25,14 +27,14 @@ done
 
 clear
 
-#Check who run script. If not root or without sudo, exit.
+# Make sure script run as sudo
 if (( $EUID  != 0 ));
 then
    echo -e "${RD}\nPlease run script with sudo: sudo bash $0 \n${NC}"
    exit 1
 fi
 
-#Checking user from who was started script.
+# Retrieve executing user's username
 CURRENT_USER=$(logname)
 
 if [[ -z $SUDO_USER ]] && [[ -z $CURRENT_USER ]]
@@ -47,8 +49,8 @@ then
         CURRENT_USER=${SUDO_USER}
 fi
 
-###STEP1
-echo -e "${GN}Step 1: Installing prerequisites applications...\n${NC}"
+### STEP 1. Install system dependencies
+echo -e "${GN}Step 1: Installing system dependencies...\n${NC}"
 apt-get -qq update > /dev/null 
 apt-get -qq install -y git \
 	curl \
@@ -61,20 +63,21 @@ apt-get -qq install -y git \
 	libmcrypt-dev \
 	libreadline-dev
 
-#Checking status of installation
+# Check installation status
 if (( $? >= 1 ))
 then
-	echo -e  "${RD}\nSome error while installing...Exit ${NC}"
+	echo -e  "${RD}\n${ERROR_STRING}${NC}"
 	exit 1
 fi
 
-echo -e "${GN}The prerequisites applications installed.\n${NC}"
+echo -e "${GN}The system dependencies have been successfully installed.\n${NC}"
 
-###STEP2
-echo -e "${GN}Step 2: Installing PHP...\n${NC}"
+### Step 2. Install PHP
+echo -e "${GN}Step 2: Installing PHP.\n${NC}"
 
 PHP_VERSION=$(php --version 2> /dev/null | head -n 1 | cut -d " " -f 2 | cut -c 1,3 )
 MCRYPT=0
+
 if [[ $PHP_VERSION =~ ^-?[0-9]+$ ]]
 then
 	if (( $PHP_VERSION == 71 ))
@@ -89,7 +92,6 @@ else
 fi
 
 PHP_VERSION_INDEX=$(echo $PHP_VERSION | cut -c 4-6)
-
 
 # Install the php repository
 add-apt-repository ppa:ondrej/php -y
@@ -113,26 +115,26 @@ apt-get -qq install ${PHP_VERSION}-common \
 
 if (( $? >= 1 ))
 then
-        echo -e  "${RD}\nSome error while installing...Exit ${NC}"
+        echo -e  "${RD}\n${ERROR_STRING}${NC}"
         exit 1
 fi
 
 echo -e "${GN}${PHP_VERSION} installed.\n${NC}"
 
-###STEP3
-echo -e "${GN}Step 3: Configure PHP Extensions...\n${NC}"
+### Step 3. Configure PHP development tools
+echo -e "${GN}Step 3: Configuring PHP Extensions...\n${NC}"
 
 apt-get -qq install -y php-pear
 
 if (( $? >= 1 ))
 then
-	echo -e  "${RD}\nSome error while installing...Exit ${NC}"
+	echo -e  "${RD}\n${ERROR_STRING}${NC}"
         exit 1
 fi
 
 pecl channel-update pecl.php.net
 
-### MCRYPT
+### Install MCrypt
 php -m | grep mcrypt > /dev/null 2>&1
 if (( $? >= 1 ))
 then
@@ -141,7 +143,7 @@ then
 		printf "\n" | pecl -q install mcrypt-1.0.1
 		if (( $? >= 1 ))
 		then
-	        	echo -e  "${RD}\nSome error while installing...Exit ${NC}"
+	        	echo -e  "${RD}\n${ERROR_STRING}${NC}"
 	        	exit 1
 		fi
 		echo "extension=mcrypt.so" > /etc/php/${PHP_VERSION_INDEX}/mods-available/mcrypt.ini
@@ -152,18 +154,18 @@ then
 	php -m | grep "mcrypt" > /dev/null 2>&1
 	if (( $? >= 1 ))
 	then
-	        echo -e  "${RD}\nExtension Mcrypt have errors...${NC}"
+	        echo -e  "${RD}\nMcrypt installation error.${NC}"
 	fi
 fi
 
-### DRIVERS FOR MONGODB
+### Install MongoDB drivers
 php -m | grep -E "^mongodb" > /dev/null 2>&1
 if (( $? >= 1 ))
 then
 	pecl -q install mongodb
 	if (( $? >= 1 ))
 	then
-	        echo -e  "${RD}\nSome error while installing...Exit ${NC}"
+	        echo -e  "${RD}\n${ERROR_STRING}${NC}"
 	        exit 1
 	fi
 	echo "extension=mongodb.so" > /etc/php/${PHP_VERSION_INDEX}/mods-available/mongodb.ini
@@ -171,11 +173,11 @@ then
 	php -m | grep -E  "^mongodb" > /dev/null 2>&1
 	if (( $? >= 1 ))
 	then
-	        echo -e  "${RD}\nExtension for MongoDB have errors...${NC}"
+	        echo -e  "${RD}\nMongoDB installation error.${NC}"
 	fi
 fi
 
-### DRIVERS FOR MSSQL (sqlsrv)
+### Install MS SQL Drivers
 php -m | grep -E "^sqlsrv" > /dev/null 2>&1
 if (( $? >= 1 ))
 then
@@ -187,7 +189,7 @@ then
 	then
 		curl https://packages.microsoft.com/config/ubuntu/18.04/prod.list > /etc/apt/sources.list.d/mssql-release.list
 	else	
-		echo -e "${RD} The script support only Ubntu 16 and 18 versions. Exit.\n ${NC}"
+		echo -e "${RD} The script support only Ubuntu 16 and 18 versions. Exit.\n ${NC}"
 		exit 1
 	fi
 	apt-get -qq update  
@@ -199,7 +201,7 @@ then
 	pecl -q install sqlsrv
 	if (( $? >= 1 ))
 	then
-	        echo -e  "${RD}\nSome error while installing...Exit ${NC}"
+	        echo -e  "${RD}\nMS SQL Server extension installation error.${NC}"
 	        exit 1
 	fi
 	echo "extension=sqlsrv.so" > /etc/php/${PHP_VERSION_INDEX}/mods-available/sqlsrv.ini
@@ -207,7 +209,7 @@ then
 	php -m | grep -E  "^sqlsrv" > /dev/null 2>&1
 	if (( $? >= 1 ))
 	then
-	        echo -e  "${RD}\nExtension for MsSQL DB have errors...${NC}"
+	        echo -e  "${RD}\nMS SQL Server extension installation error.${NC}"
 	fi
 fi	
 
@@ -218,7 +220,7 @@ then
 	pecl -q install pdo_sqlsrv
 	if (( $? >= 1 ))
 	then
-	        echo -e  "${RD}\nSome error while installing...Exit ${NC}"
+	        echo -e  "${RD}\npdo_sqlsrv extension installation error.${NC}"
 	        exit 1
 	fi
 	echo "extension=pdo_sqlsrv.so" > /etc/php/${PHP_VERSION_INDEX}/mods-available/pdo_sqlsrv.ini
@@ -226,7 +228,7 @@ then
 	php -m | grep -E  "^pdo_sqlsrv" > /dev/null 2>&1
 	if (( $? >= 1 ))
 	then
-		echo -e  "${RD}\nExtension for MsSQL DB have errors...${NC}"
+		echo -e  "${RD}\nCould not install pdo_sqlsrv extension${NC}"
 	fi
 fi
 
@@ -257,7 +259,7 @@ then
 	        	printf "instantclient,/opt/oracle/instantclient_18_3\n" | pecl -q install oci8
 	        	if (( $? >= 1 ))
 			then
-	        		echo -e  "${RD}\nSome error while installing...Exit ${NC}"
+	        		echo -e  "${RD}\nOracle instant client installation error${NC}"
 	        		exit 1
 			fi
 			echo "extension=oci8.so" > /etc/php/${PHP_VERSION_INDEX}/mods-available/oci8.ini
@@ -266,7 +268,7 @@ then
 			php -m | grep oci8 > /dev/null 2>&1
 			if (( $? >= 1 ))
 	        	then
-	        	        echo -e  "${RD}\nExtension for Oracle Database have errors...${NC}"
+	        	        echo -e  "${RD}\nCould not install oci8 extension.${NC}"
 	        	fi
 		else
 			echo -e  "${RD}Drivers not found. Skipping...\n${NC}"	
@@ -275,11 +277,11 @@ then
 fi
 echo -e "${GN}PHP Extensions configured.\n${NC}"
 
-###STEP4
+### Step 4. Install Apache
 if [[ $APACHE == TRUE ]] ### Only with key --apache
 then
 	echo -e "${GN}Step 4: Installing Apache...\n${NC}"
-	# Check apache installation in the system
+	# Check Apache installation status
 	ps aux | grep -v grep | grep apache2 > /dev/null 2>&1
 	CHECK_APACHE_PROCESS=`echo $?`
 
@@ -288,20 +290,20 @@ then
 	
 	if (( $CHECK_APACHE_PROCESS == 0 )) || (( $CHECK_APACHE_INSTALLATION == 0 ))
 	then
-	        echo -e  "${RD}Apache2 detected in the system. Skipping installation Apache2. Configure Apache2 manualy.\n${NC}"
+	        echo -e  "${RD}Apache2 detected. Skipping installation. Configure Apache2 manually.\n${NC}"
 	else 
-		#Install Apache
-	        #Cheking running web server on 80 port
+		# Install Apache
+	        # Check if running web server on port 80
 		lsof -i :80 | grep LISTEN > /dev/null 2>&1
 	        if (( $? == 0 ))
 	        then
 	                echo -e  "${RD}Some web server already running on http port.\n ${NC}"
-	                echo -e  "${RD}Skipping installation Apache2. Install Apache2 manualy.\n ${NC}"
+	                echo -e  "${RD}Skipping installation Apache2. Install Apache2 manually.\n ${NC}"
 	        else
 	                apt-get -qq install -y apache2 libapache2-mod-${PHP_VERSION}
 	                if (( $? >= 1 ))
 	                  then
-	                        echo -e  "${RD}\nSome error while installing...Exit ${NC}"
+	                        echo -e  "${RD}\nCould not install Apache. Exiting.${NC}"
 	                        exit 1
 	                fi
 	                a2enmod rewrite
@@ -335,7 +337,8 @@ then
 	fi
 
 else
-	echo -e "${GN}Step 4: Installing Nginx...\n${NC}" ### Default choose
+	echo -e "${GN}Step 4: Installing Nginx...\n${NC}" ### Default choice
+
 	# Check nginx installation in the system
 	ps aux | grep -v grep | grep nginx > /dev/null 2>&1
 	CHECK_NGINX_PROCESS=$(echo $?)
@@ -345,20 +348,20 @@ else
 	
 	if (( $CHECK_NGINX_PROCESS == 0 )) || (( $CHECK_NGINX_INSTALLATION == 0 ))
 	then
-		echo -e  "${RD}Nginx detected in the system. Skipping installation Nginx. Configure Nginx manualy.\n${NC}"
+		echo -e  "${RD}Nginx detected. Skipping installation. Configure Nginx manually.\n${NC}"
 	else
-	        #Install nginx
-	        #Cheking running web server
+	        # Install nginx
+	        # Checking running web server
 	        lsof -i :80 | grep LISTEN > /dev/null 2>&1
 	        if (( $? == 0 ))
 	        then
-	               	echo -e  "${RD}Some web server already running on http port.\n ${NC}"
-	               	echo -e  "${RD}Skipping installation Nginx. Install Nginx manualy.\n ${NC}"
+	               	echo -e  "${RD}Port 80 taken.\n ${NC}"
+	               	echo -e  "${RD}Skipping Nginx installation. Install Nginx manually.\n ${NC}"
 	        else
 	        	apt-get -qq install -y nginx ${PHP_VERSION}-fpm
 	        	if (( $? >= 1 ))
 	            	  then
-	                	echo -e  "${RD}\nSome error while installing...Exit ${NC}"
+	                	echo -e  "${RD}\nCould not install Nginx. Exiting.${NC}"
 	                	exit 1
 	        	fi
 	        	# Change php fpm configuration file
@@ -402,7 +405,7 @@ else
 	fi
 fi
 	
-###STEP5
+### Step 5. Installing Composer
 echo -e "${GN}Step 5: Installing Composer...\n${NC}"
 
 curl -sS https://getcomposer.org/installer -o /tmp/composer-setup.php
@@ -416,7 +419,7 @@ then
 fi
 echo -e "${GN}Composer installed.\n${NC}"
 
-###STEP6
+### Step 6. Installing MySQL
 if [[ $MYSQL == TRUE ]] ### Only with key --with-mysql
 then
 	echo -e "${GN}Step 6: Installing Database for DreamFactory...\n${NC}"
@@ -445,14 +448,15 @@ then
 	        	apt-key adv --recv-keys --keyserver hkp://keyserver.ubuntu.com:80 0xF1656F24C74CD1D8
 	        	add-apt-repository 'deb [arch=amd64,arm64,ppc64el] http://mariadb.petarmaric.com/repo/10.3/ubuntu bionic main'
 		else
-			echo -e "${RD} The script support only Ubntu 16 and 18 versions. Exit.\n ${NC}"
+			echo -e "${RD} The script support only Ubuntu 16 and 18 versions. Exit.\n ${NC}"
 			exit 1
 	        fi
 	        
-		DB_PASS=$(date +%s | sha256sum | base64 | head -c 8)
+        	read -p "Please choose a strong MySQL root user password: " DB_PASS
 
 	        apt-get -qq update
-	        #Disable interactive mode in installation mariadb. Set generated above password.
+
+	        # Disable interactive mode in installation mariadb. Set generated above password.
 		export DEBIAN_FRONTEND="noninteractive"
 		debconf-set-selections <<< "mariadb-server mysql-server/root_password password $DB_PASS"
 		debconf-set-selections <<< "mariadb-server mysql-server/root_password_again password $DB_PASS" 
@@ -461,7 +465,7 @@ then
 	        
 	        if (( $? >= 1 ))
 	        then
-	                echo -e  "${RD}\nSome error while installing...Exit ${NC}"
+	                echo -e  "${RD}\nCould not install Maria DB. Exiting.${NC}"
 	                exit 1
 	        fi
 	
@@ -470,21 +474,23 @@ then
 	
 	if (( $? >= 1 ))
 	then
-	        echo -e  "${RD}\nSome error while starting service...Exit ${NC}"
+	        echo -e  "${RD}\nCould not start MariaDB.. Exit ${NC}"
 	        exit 1
 	fi
 	
 	echo -e "${GN}Database for DreamFactory installed.\n${NC}"
 
-	###STEP7
-	echo -e "${GN}Step 7: Configure DreamFactory access to Database...\n${NC}"
+	### Step 7. Configuring DreamFactory system database
+	echo -e "${GN}Step 7: Configure DreamFactory system database.\n${NC}"
 	
 	DB_INSTALLED=FALSE
-	
+
+	# The MySQL database has already been installed, so let's configure
+	# the DreamFactory system database.	
 	if [[ $DB_FOUND == TRUE ]]
 	then
 	        echo -e "${MG}"
-	        read -p 'Database for DreamFactory configured already? [Yy/Nn] ' DB_ANSWER
+	        read -p 'Is DreamFactory MySQL system database already configured? [Yy/Nn] ' DB_ANSWER
 	        echo -e "${NC}"
 	        if [[ -z $DB_ANSWER ]]
 	        then
@@ -493,11 +499,14 @@ then
 	        if [[ $DB_ANSWER =~ ^[Yy]$ ]]
 	        then
 	                DB_INSTALLED=TRUE
+
+		# MySQL system database is not installed, but MySQL is, so let's
+		# prompt the user for the root password.
 		else
-			echo -e "${MG}Enter password for Database root user:\n ${NC} " 
+			echo -e "${MG}Enter MySQL root password:\n ${NC} " 
 	        	read -s DB_PASS
 	
-	        	# Test access to DB
+	        	# Test DB access
 	        	mysql -h localhost -u root -p$DB_PASS -e"quit" > /dev/null 2>&1
 	        	if (( $? >= 1 ))
 	        	then
@@ -506,7 +515,7 @@ then
 	                	until [[ $ACCESS == TRUE ]]
 	                	do
 	                        	echo -e "${RD}\nPassword incorrect!\n ${NC}"
-	                        	echo -e "${MG}Enter correct password for root user:\n ${NC} "
+	                        	echo -e "${MG}Enter root user password:\n ${NC} "
 	                        	read -s DB_PASS
 	                        	mysql -h localhost -u root -p$DB_PASS -e"quit" > /dev/null 2>&1
 	                        	if (( $? == 0 ))
@@ -523,23 +532,29 @@ then
 	
 		fi
 	fi
-	
+
+	# If the DreamFactory system database not already installed,
+	# let's install it.
 	if [[ $DB_INSTALLED == FALSE ]]
 	then
 	
-	        # Test access to DB
+	        # Test DB access
 	        mysql -h localhost -u root -p$DB_PASS -e"quit" > /dev/null 2>&1
 	        if (( $? >= 1 ))
 	        then
 	                echo -e "${RD}Connection to Database failed. Exit  \n${NC}"
 	                exit 1
 	        fi
+
+		read -p 'What would you like to name your system database? (e.g. dreamfactory) ' DF_SYSTEM_DB
 	
-	        echo "CREATE DATABASE dreamfactory;" | mysql -u root -p${DB_PASS} > /dev/null 2>&1
+	        echo "CREATE DATABASE ${DF_SYSTEM_DB};" | mysql -u root -p${DB_PASS} > /dev/null 2>&1
+		
+		read -p 'Please create a MySQL DreamFactory system user name (e.g. dfadmin): ' DF_SYSTEM_DB_USER
+		read -p 'Please create a secure MySQL DreamFactory user password: ' DF_SYSTEM_DB_PASSWORD
 	
-	        #Generate password for user in DB
-	        DB_ADMIN_PASS=\'$(date +%s | sha256sum | base64 | head -c 8)\'
-	        echo "GRANT ALL PRIVILEGES ON dreamfactory.* to 'dfadmin'@'localhost' IDENTIFIED BY ${DB_ADMIN_PASS};" | mysql -u root -p${DB_PASS}  > /dev/null 2>&1
+	        # Generate password for user in DB
+	        echo "GRANT ALL PRIVILEGES ON ${DF_SYSTEM_DB}.* to '${DF_SYSTEM_DB_USER}'@'localhost' IDENTIFIED BY ${DF_SYSTEM_DB_PASSWORD};" | mysql -u root -p${DB_PASS}  > /dev/null 2>&1
 	        echo "FLUSH PRIVILEGES;" | mysql -u root -p${DB_PASS}  > /dev/null 2>&1
 	
 	        echo -e "${GN}Database configuration finished.\n${NC}"
@@ -547,11 +562,11 @@ then
 	        echo -e "${GN}Skipping...\n${NC}"
 	fi
 else
-	echo -e "${GN}Step 6: Skipping installation Database for DreamFactory...\n"
-	echo -e "Step 7: Skipping configuration DreamFactory access to Database...\n${NC}"
+	echo -e "${GN}Step 6: Skipping DreamFactory system database installation.\n"
+	echo -e "Step 7: Skipping DreamFactory system database configuration.\n${NC}"
 fi
 
-###STEP8		
+### Step 8. Install DreamFactory		
 echo -e "${GN}Step 8: Installing DreamFactory...\n ${NC}"
 
 ls -d /opt/dreamfactory > /dev/null 2>&1
@@ -561,17 +576,17 @@ then
 	git clone https://github.com/dreamfactorysoftware/dreamfactory.git /opt/dreamfactory
 	if (( $? >= 1 ))
 	then
-        	echo -e  "${RD}\nSome error while installing...Exit ${NC}"
+        	echo -e  "${RD}\nCould not clone DreamFactory repository. Exiting. ${NC}"
         	exit 1
 	fi
 	DF_CLEAN_INSTALLATION=TRUE
 else
-	echo -e  "${RD}Folder with DreamFactory detected. Skipping installation DreamFactory...\n${NC}"
+	echo -e  "${RD}DreamFactory installation folder detected. Skipping installation.\n${NC}"
 	DF_CLEAN_INSTALLATION=FALSE
 fi
 
 echo -e "${MG}"
-read -p 'Do you have license? [Yy/Nn] ' ANSWER  
+read -p 'Do you have a commercial DreamFactory license? [Yy/Nn] ' ANSWER  
 echo -e "${NC}"
 if [[ -z $ANSWER ]]
 then
@@ -580,7 +595,7 @@ fi
 if [[ $ANSWER =~ ^[Yy]$ ]]
 then
 	echo -e "${MG}"
-	read -p "Enter paht to license files: [./] " LICENSE_PATH 
+	read -p "Enter path to license files: [./] " LICENSE_PATH 
        	if [[ -z $LICENSE_PATH ]]
 	then
 		LICENSE_PATH="."
@@ -589,17 +604,19 @@ then
 	ls $LICENSE_PATH/composer.{json,lock,json-dist} > /dev/null 2>&1
 	if (( $? >= 1 ))
         then
-                echo -e  "${RD}\nLicenses not found. Skipping.\n${NC}"
+                echo -e  "${RD}\nLicense not found. Skipping.\n${NC}"
         else
 		cp $LICENSE_PATH/composer.{json,lock,json-dist} /opt/dreamfactory/
 		LICENSE_INSTALLED=TRUE
 		echo -e "\n${GN}Licenses installed. ${NC}\n"
 	fi
 else
-	echo -e  "${RD}Installing OSS version of the DreamFactory...\n${NC}"
+	echo -e  "${RD}Installing DreamFactory OSS version.\n${NC}"
 fi
 chown -R $CURRENT_USER /opt/dreamfactory && cd /opt/dreamfactory 
 
+# If Oracle is not installed, add the --ignore-platform-reqs option
+# to composer command
 if [[ $ORACLE == TRUE ]]
 then
     sudo -u $CURRENT_USER bash -c "composer install --no-dev"
@@ -609,15 +626,16 @@ fi
 
 if [[ $DB_INSTALLED == FALSE ]]
 then
+
         sudo -u  $CURRENT_USER bash -c "php artisan df:env \
                 --db_connection=mysql \
                 --db_host=127.0.0.1 \
                 --db_port=3306 \
-                --db_database=dreamfactory \
-                --db_username=dfadmin \
-                --db_password=$(echo $DB_ADMIN_PASS | sed 's/['\'']//g')"
-        sed -i 's/\#\#DB\_CHARSET\=utf8/DB\_CHARSET\=utf8/g' .env
-        sed -i 's/\#\#DB\_COLLATION\=utf8\_unicode\_ci/DB\_COLLATION\=utf8\_unicode\_ci/g' .env
+                --db_database=$(echo $DF_SYSTEM_DB) \
+                --db_username=$(echo $DF_SYSTEM_DB_USER) \
+                --db_password=$(echo $DF_SYSTEM_DB_PASSWORD) | sed 's/['\'']//g')"
+        sed -i 's/\#DB\_CHARSET\=utf8/DB\_CHARSET\=utf8/g' .env
+        sed -i 's/\#DB\_COLLATION\=utf8\_unicode\_ci/DB\_COLLATION\=utf8\_unicode\_ci/g' .env
 	echo -e "\n${MG}Database root password:${NC} $DB_PASS"
         echo -e "\n"
 

@@ -554,7 +554,7 @@ then
 		read -p 'Please create a secure MySQL DreamFactory system database user password: ' DF_SYSTEM_DB_PASSWORD
 	
 	        # Generate password for user in DB
-	        echo "GRANT ALL PRIVILEGES ON ${DF_SYSTEM_DB}.* to \"${DF_SYSTEM_DB_USER}\"@\"localhost\" IDENTIFIED BY ${DF_SYSTEM_DB_PASSWORD};" | mysql -u root -p${DB_PASS}  > /dev/null 2>&1
+	        echo "GRANT ALL PRIVILEGES ON ${DF_SYSTEM_DB}.* to \"${DF_SYSTEM_DB_USER}\"@\"localhost\" IDENTIFIED BY \"${DF_SYSTEM_DB_PASSWORD}\";" | mysql -u root -p${DB_PASS}  > /dev/null 2>&1
 	        echo "FLUSH PRIVILEGES;" | mysql -u root -p${DB_PASS}  > /dev/null 2>&1
 	
 	        echo -e "${GN}Database configuration finished.\n${NC}"

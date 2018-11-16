@@ -550,11 +550,11 @@ then
 	
 	        echo "CREATE DATABASE ${DF_SYSTEM_DB};" | mysql -u root -p${DB_PASS} > /dev/null 2>&1
 		
-		read -p 'Please create a MySQL DreamFactory system user name (e.g. dfadmin): ' DF_SYSTEM_DB_USER
-		read -p 'Please create a secure MySQL DreamFactory user password: ' DF_SYSTEM_DB_PASSWORD
+		read -p 'Please create a MySQL DreamFactory system database user name (e.g. dfadmin): ' DF_SYSTEM_DB_USER
+		read -p 'Please create a secure MySQL DreamFactory system database user password: ' DF_SYSTEM_DB_PASSWORD
 	
 	        # Generate password for user in DB
-	        echo "GRANT ALL PRIVILEGES ON ${DF_SYSTEM_DB}.* to '${DF_SYSTEM_DB_USER}'@'localhost' IDENTIFIED BY ${DF_SYSTEM_DB_PASSWORD};" | mysql -u root -p${DB_PASS}  > /dev/null 2>&1
+	        echo "GRANT ALL PRIVILEGES ON ${DF_SYSTEM_DB}.* to \"${DF_SYSTEM_DB_USER}\"@\"localhost\" IDENTIFIED BY ${DF_SYSTEM_DB_PASSWORD};" | mysql -u root -p${DB_PASS}  > /dev/null 2>&1
 	        echo "FLUSH PRIVILEGES;" | mysql -u root -p${DB_PASS}  > /dev/null 2>&1
 	
 	        echo -e "${GN}Database configuration finished.\n${NC}"
@@ -633,7 +633,7 @@ then
                 --db_port=3306 \
                 --db_database=$(echo $DF_SYSTEM_DB) \
                 --db_username=$(echo $DF_SYSTEM_DB_USER) \
-                --db_password=$(echo $DF_SYSTEM_DB_PASSWORD) | sed 's/['\'']//g')"
+                --db_password=$(echo $DF_SYSTEM_DB_PASSWORD | sed 's/['\'']//g')"
         sed -i 's/\#DB\_CHARSET\=utf8/DB\_CHARSET\=utf8/g' .env
         sed -i 's/\#DB\_COLLATION\=utf8\_unicode\_ci/DB\_COLLATION\=utf8\_unicode\_ci/g' .env
 	echo -e "\n${MG}Database root password:${NC} $DB_PASS"

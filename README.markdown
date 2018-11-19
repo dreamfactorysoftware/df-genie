@@ -33,7 +33,7 @@ In the case of MySQL, PostgreSQL, and MS SQL Server you'll be prompted to provid
 
 ### Enabling Oracle
 
-Passing the ```--oracle``` option will result in installation of PHP's Oracle (oci8) extension. You will need to supply a Silver or Gold license files to enable this functionality. [Contact us about upgrading!](https://www.dreamfactory.com/contact-demo) If you choose this option you'll be prompted to identify the location of the the Oracle instant client zip files by providing an absolute path. Due to licensing restrictions we are unable to include these files with the installer, however you can download these files from [here](https://www.oracle.com/technetwork/topics/linuxx86-64soft-092277.html). You can pass the option like this:
+Passing the ```--oracle``` option will result in installation of PHP's Oracle (oci8) extension. You will need to supply a Silver or Gold license files to enable this functionality, [contact us about upgrading!](https://www.dreamfactory.com/contact-demo) If you choose this option you'll be prompted to identify the location of the the Oracle instant client zip files by providing an absolute path. Due to licensing restrictions we are unable to include these files with the installer, however you can download these files from [here](https://www.oracle.com/technetwork/topics/linuxx86-64soft-092277.html). You can pass the option like this:
 
     $ sudo ./DreamFactory_Ubuntu.sh --with-oracle
 

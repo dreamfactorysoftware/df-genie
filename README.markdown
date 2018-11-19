@@ -14,7 +14,7 @@ For this wizard to work properly several conditions must be met:
 
 ## Installation Options
 
-You may pass several options into the script to alter its behavior. If you do not use these options, the script will install the Nginx web server, DreamFactory, and the required system and PHP extensions, but will *not install a database server*. During the script's execution you have the option to choose the SQLite database for your DreamFactory system database, which does not require any additional installation or configuration steps.
+You may pass several options into the script to alter its behavior. If you do not use these options, the script will install the Nginx web server, DreamFactory, and the required system and PHP extensions, but will **not install a database server**. During the script's execution you have the option to choose the SQLite database for your DreamFactory system database, which does not require any additional installation or configuration steps.
 
 ### Installing MySQL
 
@@ -29,11 +29,11 @@ If you do not provide this option then the script assumes you've already install
 * SQLite
 * MS SQL Server
 
-In the case of MySQL, PostgreSQL, and MS SQL Server you'll be prompted to provide an *existing* database name, database username, and database password.
+In the case of MySQL, PostgreSQL, and MS SQL Server you'll be prompted to provide an **existing** database name, database username, and database password.
 
 ### Enabling Oracle
 
-Passing the ```--oracle``` option will result in installation of PHP's Oracle (oci8) extension. You will need to supply a Silver or Gold license files to enable this functionality. If you choose this option you'll be prompted to identify the location of the the Oracle instant client zip files by providing an absolute path. Due to licensing restrictions we are unable to include these files with the installer, however you can download these files from [here](https://www.oracle.com/technetwork/topics/linuxx86-64soft-092277.html). You can pass the option like this:
+Passing the ```--oracle``` option will result in installation of PHP's Oracle (oci8) extension. You will need to supply a Silver or Gold license files to enable this functionality. [Contact us about upgrading!](https://www.dreamfactory.com/contact-demo) If you choose this option you'll be prompted to identify the location of the the Oracle instant client zip files by providing an absolute path. Due to licensing restrictions we are unable to include these files with the installer, however you can download these files from [here](https://www.oracle.com/technetwork/topics/linuxx86-64soft-092277.html). You can pass the option like this:
 
     $ sudo ./DreamFactory_Ubuntu.sh --with-oracle
 

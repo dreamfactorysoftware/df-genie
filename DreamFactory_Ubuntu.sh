@@ -252,6 +252,7 @@ then
 		unzip "$DRIVERS_PATH/instantclient-*.zip" -d /opt/oracle
 		if (( $? == 0 ))
 		then
+			echo -e  "${GN}Drivers found.\n${NC}" >&10
 	        	apt-get install -y libaio1
 			echo "/opt/oracle/instantclient_18_3" > /etc/ld.so.conf.d/oracle-instantclient.conf
 	        	ldconfig
@@ -418,7 +419,7 @@ php /tmp/composer-setup.php --install-dir=/usr/local/bin --filename=composer
 
 if (( $? >= 1 ))
 then
-        echo -e  "${RD}\nSome error while installing...Exit ${NC}" >&10
+        echo -e  "${RD}\n${ERROR_STRING}${NC}" >&10
         exit 1
 fi
 echo -e "${GN}Composer installed.\n${NC}" >&10
@@ -458,8 +459,17 @@ then
 	       
 		apt-get update
 	       
-		echo -e  "${MG}Please choose a strong MySQL root user password ${NC}" >&10
+		echo -e  "${MG}Please choose a strong MySQL root user password: ${NC}" >&10
         	read DB_PASS
+		if [[ -z $DB_PASS ]]
+                then
+                        until [[ ! -z $DB_PASS ]]
+                        do
+                                echo -e "${RD}The password can't be empty!${NC}" >&10
+                                read DB_PASS
+                        done
+                fi
+
 		echo -e  "${GN}\nPassword accepted.${NC}\n" >&10
 	        # Disable interactive mode in installation mariadb. Set generated above password.
 		export DEBIAN_FRONTEND="noninteractive"
@@ -470,17 +480,16 @@ then
 	        
 	        if (( $? >= 1 ))
 	        then
-	                echo -e  "${RD}\nCould not install Maria DB. Exiting.${NC}" >&10
+	                echo -e  "${RD}\n${ERROR_STRING}${NC}" >&10
 	                exit 1
 	        fi
 	
 		service mariadb start
-	fi
-	
-	if (( $? >= 1 ))
-	then
-	        echo -e  "${RD}\nCould not start MariaDB.. Exit ${NC}" >&10
-	        exit 1
+		if (( $? >= 1 ))
+        	then
+                	echo -e  "${RD}\nCould not start MariaDB.. Exit ${NC}" >&10
+                	exit 1
+        	fi
 	fi
 	
 	echo -e "${GN}Database for DreamFactory installed.\n${NC}" >&10
@@ -507,7 +516,7 @@ then
 		# MySQL system database is not installed, but MySQL is, so let's
 		# prompt the user for the root password.
 		else
-			echo -e "${MG}Enter MySQL root password:\n ${NC} " >&10
+			echo -e "\n${MG}Enter MySQL root password: ${NC} " >&10
 	        	read DB_PASS
 	
 	        	# Test DB access
@@ -529,7 +538,8 @@ then
 					TRYS=$((TRYS + 1))
 					if (( $TRYS == 3 ))
 					then
-						break
+						echo -e "\n${RD}Exit \n${NC}" >&10
+						exit 1	
 					fi
 	                	done
 	        	fi
@@ -551,19 +561,39 @@ then
 	        fi
 		echo -e "${MG}What would you like to name your system database? (e.g. dreamfactory) ${NC}" >&10
 		read DF_SYSTEM_DB
-		#if [[ -z $DF_SYSTEM_DB ]]
-                #then
-                #fi
+		if [[ -z $DF_SYSTEM_DB ]]
+                then
+			until [[ ! -z $DF_SYSTEM_DB ]]
+			do
+				echo -e "${RD}The name can't be empty!${NC}" >&10
+				read DF_SYSTEM_DB
+			done
+                fi
 
 	        echo "CREATE DATABASE ${DF_SYSTEM_DB};" | mysql -u root -p${DB_PASS}
 	
 		echo -e "\n${MG}Please create a MySQL DreamFactory system database user name (e.g. dfadmin): ${NC}" >&10	
 		read DF_SYSTEM_DB_USER
+		if [[ -z $DF_SYSTEM_DB_USER ]]
+                then
+                        until [[ ! -z $DF_SYSTEM_DB_USER ]]
+                        do
+                                echo -e "${RD}The name can't be empty!${NC}" >&10
+                                read DF_SYSTEM_DB_USER
+                        done
+                fi
 
 
 		echo -e "\n${MG}Please create a secure MySQL DreamFactory system database user password: ${NC}" >&10
 		read DF_SYSTEM_DB_PASSWORD
-	
+                if [[ -z $DF_SYSTEM_DB_PASSWORD ]]
+		then
+                        until [[ ! -z $DF_SYSTEM_DB_PASSWORD ]]
+                        do
+                                echo -e "${RD}The name can't be empty!${NC}" >&10
+                                read DF_SYSTEM_DB_PASSWORD
+                        done
+                fi	
 	        # Generate password for user in DB
 	        echo "GRANT ALL PRIVILEGES ON ${DF_SYSTEM_DB}.* to \"${DF_SYSTEM_DB_USER}\"@\"localhost\" IDENTIFIED BY \"${DF_SYSTEM_DB_PASSWORD}\";" | mysql -u root -p${DB_PASS} 
 		echo "FLUSH PRIVILEGES;" | mysql -u root -p${DB_PASS} 
@@ -620,7 +650,7 @@ then
 		echo -e "\n${GN}Licenses installed. ${NC}\n" >&10
 	fi
 else
-	echo -e  "${RD}Installing DreamFactory OSS version.\n${NC}" >&10
+	echo -e  "\n${RD}Installing DreamFactory OSS version.\n${NC}" >&10
 fi
 chown -R $CURRENT_USER /opt/dreamfactory && cd /opt/dreamfactory 
 
@@ -647,6 +677,7 @@ then
         sed -i 's/\#DB\_COLLATION\=utf8\_unicode\_ci/DB\_COLLATION\=utf8\_unicode\_ci/g' .env
 	#echo -e "\n${MG}Database root password:${NC} $DB_PASS" >&10
         echo -e "\n"
+	MYSQL_INSTALLED=TRUE
 
 elif [[ ! $MYSQL == TRUE && $DF_CLEAN_INSTALLATION == TRUE ]]
 then
@@ -661,7 +692,7 @@ then
 	sudo -u $CURRENT_USER bash -c "php artisan df:setup" 
 fi
 
-if [[  $LICENSE_INSTALLED == TRUE && $DF_CLEAN_INSTALLATION == FALSE ]]
+if [[  $LICENSE_INSTALLED == TRUE || $DF_CLEAN_INSTALLATION == FALSE ]]
 then
 	php artisan migrate --seed
 	sudo -u $CURRENT_USER bash -c "php artisan config:clear -q"
@@ -671,5 +702,26 @@ chmod -R 2775 storage/ bootstrap/cache/
 chown -R www-data:$CURRENT_USER storage/ bootstrap/cache/
 sudo -u $CURRENT_USER bash -c "php artisan cache:clear -q"
 echo -e "\n${GN}Installation finished ${NC}!"
+
+### Summary table
+if [[ $MYSQL_INSTALLED == TRUE ]]
+then
+	echo -e "\n "
+	echo -e "${MG}******************************"
+	echo -e " DB for system table: mysql "
+	echo -e " DB host: 127.0.0.1         "
+	echo -e " DB port: 3306              "
+	if [[ ! $DB_FOUND == TRUE ]]
+	then
+		echo -e " DB root password: $DB_PASS"
+	fi
+	echo -e " DB name: $(echo $DF_SYSTEM_DB) "
+	echo -e " DB user: $(echo $DF_SYSTEM_DB_USER)"
+	echo -e " DB password: $(echo $DF_SYSTEM_DB_PASSWORD)"  
+	echo -e "******************************${NC}\n"
+fi
+
 exit 0
+
+
 

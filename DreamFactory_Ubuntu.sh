@@ -21,22 +21,23 @@ do
 shift
 done
 
-if [[ $DEBUG == TRUE ]]
+if [[ ! $DEBUG == TRUE ]]
 then
-	set -x
-else
-	exec 10>&1 # Save a copy of STDOUT
+	exec 5>&1 # Save a copy of STDOUT
 	exec > /dev/null 2>&1 # Redirect STDOUT to Null
+else
+	exec 5>&1 # Save a copy of STDOUT. Used because all echo redirects output to 5.
+	exec > /tmp/dreamfactory_installer.log 2>&1
 fi
 
 CURRENT_OS=$(cat /etc/os-release | grep VERSION_ID | cut -d "=" -f 2 | cut -c 2-3)
 
-clear >&10
+clear >&5
 
 # Make sure script run as sudo
 if (( $EUID  != 0 ));
 then
-   echo -e "${RD}\nPlease run script with sudo: sudo bash $0 \n${NC}" >&10
+   echo -e "${RD}\nPlease run script with sudo: sudo bash $0 \n${NC}" >&5
    exit 1
 fi
 
@@ -45,9 +46,9 @@ CURRENT_USER=$(logname)
 
 if [[ -z $SUDO_USER ]] && [[ -z $CURRENT_USER ]]
 then
-        echo -e "${RD} \n" >&10
+        echo -e "${RD} \n" >&5
         read -p "Enter username for installation DreamFactory:" CURRENT_USER
-        echo -e "${NC} \n" >&10
+        echo -e "${NC} \n" >&5 
 fi
 
 if [[ ! -z $SUDO_USER ]]
@@ -56,7 +57,7 @@ then
 fi
 
 ### STEP 1. Install system dependencies
-echo -e "${GN}Step 1: Installing system dependencies...\n${NC}" >&10
+echo -e "${GN}Step 1: Installing system dependencies...\n${NC}" >&5
 apt-get update > /dev/null 
 apt-get install -y git \
 	curl \
@@ -72,14 +73,14 @@ apt-get install -y git \
 # Check installation status
 if (( $? >= 1 ))
 then
-	echo -e  "${RD}\n${ERROR_STRING}${NC}" >&10
+	echo -e  "${RD}\n${ERROR_STRING}${NC}" >&5
 	exit 1
 fi
 
-echo -e "${GN}The system dependencies have been successfully installed.\n${NC}" >&10
+echo -e "${GN}The system dependencies have been successfully installed.\n${NC}" >&5
 
 ### Step 2. Install PHP
-echo -e "${GN}Step 2: Installing PHP...\n${NC}" >&10
+echo -e "${GN}Step 2: Installing PHP...\n${NC}" >&5
 
 PHP_VERSION=$(php --version 2> /dev/null | head -n 1 | cut -d " " -f 2 | cut -c 1,3 )
 MCRYPT=0
@@ -120,20 +121,20 @@ apt-get install -y ${PHP_VERSION}-common \
 
 if (( $? >= 1 ))
 then
-        echo -e  "${RD}\n${ERROR_STRING}${NC}" >&10
+        echo -e  "${RD}\n${ERROR_STRING}${NC}" >&5
         exit 1
 fi
 
-echo -e "${GN}${PHP_VERSION} installed.\n${NC}" >&10
+echo -e "${GN}${PHP_VERSION} installed.\n${NC}" >&5
 
 ### Step 3. Configure PHP development tools
-echo -e "${GN}Step 3: Configuring PHP Extensions...\n${NC}" >&10
+echo -e "${GN}Step 3: Configuring PHP Extensions...\n${NC}" >&5
 
 apt-get install -y php-pear
 
 if (( $? >= 1 ))
 then
-	echo -e  "${RD}\n${ERROR_STRING}${NC}">&10
+	echo -e  "${RD}\n${ERROR_STRING}${NC}">&5
         exit 1
 fi
 
@@ -148,7 +149,7 @@ then
 		printf "\n" | pecl install mcrypt-1.0.1
 		if (( $? >= 1 ))
 		then
-	        	echo -e  "${RD}\n${ERROR_STRING}${NC}" >&10
+	        	echo -e  "${RD}\n${ERROR_STRING}${NC}" >&5
 	        	exit 1
 		fi
 		echo "extension=mcrypt.so" > /etc/php/${PHP_VERSION_INDEX}/mods-available/mcrypt.ini
@@ -159,7 +160,7 @@ then
 	php -m | grep "mcrypt" 
 	if (( $? >= 1 ))
 	then
-	        echo -e  "${RD}\nMcrypt installation error.${NC}" >&10
+	        echo -e  "${RD}\nMcrypt installation error.${NC}" >&5
 	fi
 fi
 
@@ -170,7 +171,7 @@ then
 	pecl install mongodb
 	if (( $? >= 1 ))
 	then
-	        echo -e  "${RD}\n${ERROR_STRING}${NC}" >&10
+	        echo -e  "${RD}\n${ERROR_STRING}${NC}" >&5
 	        exit 1
 	fi
 	echo "extension=mongodb.so" > /etc/php/${PHP_VERSION_INDEX}/mods-available/mongodb.ini
@@ -178,7 +179,7 @@ then
 	php -m | grep -E  "^mongodb"
 	if (( $? >= 1 ))
 	then
-	        echo -e  "${RD}\nMongoDB installation error.${NC}" >&10
+	        echo -e  "${RD}\nMongoDB installation error.${NC}" >&5
 	fi
 fi
 
@@ -194,7 +195,7 @@ then
 	then
 		curl https://packages.microsoft.com/config/ubuntu/18.04/prod.list > /etc/apt/sources.list.d/mssql-release.list
 	else	
-		echo -e "${RD} The script support only Ubuntu 16 and 18 versions. Exit.\n ${NC}">&10
+		echo -e "${RD} The script support only Ubuntu 16 and 18 versions. Exit.\n ${NC}">&5
 		exit 1
 	fi
 	apt-get update  
@@ -206,7 +207,7 @@ then
 	pecl install sqlsrv
 	if (( $? >= 1 ))
 	then
-	        echo -e  "${RD}\nMS SQL Server extension installation error.${NC}" >&10
+	        echo -e  "${RD}\nMS SQL Server extension installation error.${NC}" >&5
 	        exit 1
 	fi
 	echo "extension=sqlsrv.so" > /etc/php/${PHP_VERSION_INDEX}/mods-available/sqlsrv.ini
@@ -214,7 +215,7 @@ then
 	php -m | grep -E  "^sqlsrv" 
 	if (( $? >= 1 ))
 	then
-	        echo -e  "${RD}\nMS SQL Server extension installation error.${NC}" >&10
+	        echo -e  "${RD}\nMS SQL Server extension installation error.${NC}" >&5
 	fi
 fi	
 
@@ -225,7 +226,7 @@ then
 	pecl install pdo_sqlsrv
 	if (( $? >= 1 ))
 	then
-	        echo -e  "${RD}\npdo_sqlsrv extension installation error.${NC}" >&10
+	        echo -e  "${RD}\npdo_sqlsrv extension installation error.${NC}" >&5
 	        exit 1
 	fi
 	echo "extension=pdo_sqlsrv.so" > /etc/php/${PHP_VERSION_INDEX}/mods-available/pdo_sqlsrv.ini
@@ -233,7 +234,7 @@ then
 	php -m | grep -E  "^pdo_sqlsrv"
 	if (( $? >= 1 ))
 	then
-		echo -e  "${RD}\nCould not install pdo_sqlsrv extension${NC}" >&10
+		echo -e  "${RD}\nCould not install pdo_sqlsrv extension${NC}" >&5
 	fi
 fi
 
@@ -243,7 +244,7 @@ if (( $? >= 1 ))
 then
 	if [[ $ORACLE == TRUE ]]
 	then
-		echo -e "${MG}Enter path to the Oracle drivers: [./]${NC} " >&10
+		echo -e "${MG}Enter path to the Oracle drivers: [./]${NC} " >&5
         	read DRIVERS_PATH 
         	if [[ -z $DRIVERS_PATH ]]
         	then
@@ -252,7 +253,7 @@ then
 		unzip "$DRIVERS_PATH/instantclient-*.zip" -d /opt/oracle
 		if (( $? == 0 ))
 		then
-			echo -e  "${GN}Drivers found.\n${NC}" >&10
+			echo -e  "${GN}Drivers found.\n${NC}" >&5
 	        	apt-get install -y libaio1
 			echo "/opt/oracle/instantclient_18_3" > /etc/ld.so.conf.d/oracle-instantclient.conf
 	        	ldconfig
@@ -264,7 +265,7 @@ then
 	        	printf "instantclient,/opt/oracle/instantclient_18_3\n" | pecl install oci8
 	        	if (( $? >= 1 ))
 			then
-	        		echo -e  "${RD}\nOracle instant client installation error${NC}" >&10
+	        		echo -e  "${RD}\nOracle instant client installation error${NC}" >&5
 	        		exit 1
 			fi
 			echo "extension=oci8.so" > /etc/php/${PHP_VERSION_INDEX}/mods-available/oci8.ini
@@ -273,42 +274,42 @@ then
 			php -m | grep oci8 
 			if (( $? >= 1 ))
 	        	then
-	        	        echo -e  "${RD}\nCould not install oci8 extension.${NC}" >&10
+	        	        echo -e  "${RD}\nCould not install oci8 extension.${NC}" >&5
 	        	fi
 		else
-			echo -e  "${RD}Drivers not found. Skipping...\n${NC}" >&10	
+			echo -e  "${RD}Drivers not found. Skipping...\n${NC}" >&5
 		fi
 	fi
 fi
-echo -e "${GN}PHP Extensions configured.\n${NC}" >&10
+echo -e "${GN}PHP Extensions configured.\n${NC}" >&5
 
 ### Step 4. Install Apache
 if [[ $APACHE == TRUE ]] ### Only with key --apache
 then
-	echo -e "${GN}Step 4: Installing Apache...\n${NC}" >&10
+	echo -e "${GN}Step 4: Installing Apache...\n${NC}" >&5
 	# Check Apache installation status
 	ps aux | grep -v grep | grep apache2
 	CHECK_APACHE_PROCESS=$(echo $?)
 
-	dpkg -l | grep apache2 | cut -d " " -f 3 | grep -E "apache2$" > /dev/null 2>&1
+	dpkg -l | grep apache2 | cut -d " " -f 3 | grep -E "apache2$" 
 	CHECK_APACHE_INSTALLATION=$(echo $?)
 	
 	if (( $CHECK_APACHE_PROCESS == 0 )) || (( $CHECK_APACHE_INSTALLATION == 0 ))
 	then
-	        echo -e  "${RD}Apache2 detected. Skipping installation. Configure Apache2 manually.\n${NC}"
+	        echo -e  "${RD}Apache2 detected. Skipping installation. Configure Apache2 manually.\n${NC}" >&5
 	else 
 		# Install Apache
 	        # Check if running web server on port 80
-		lsof -i :80 | grep LISTEN > /dev/null 2>&1
+		lsof -i :80 | grep LISTEN 
 	        if (( $? == 0 ))
 	        then
-	                echo -e  "${RD}Some web server already running on http port.\n ${NC}"
-	                echo -e  "${RD}Skipping installation Apache2. Install Apache2 manually.\n ${NC}"
+	                echo -e  "${RD}Port 80 taken.\n ${NC}" >&5
+	                echo -e  "${RD}Skipping installation Apache2. Install Apache2 manually.\n ${NC}" >&5
 	        else
 	                apt-get -qq install -y apache2 libapache2-mod-${PHP_VERSION}
 	                if (( $? >= 1 ))
 	                  then
-	                        echo -e  "${RD}\nCould not install Apache. Exiting.${NC}"
+	                        echo -e  "${RD}\nCould not install Apache. Exiting.${NC}" >&5
 	                        exit 1
 	                fi
 	                a2enmod rewrite
@@ -337,12 +338,12 @@ then
 	
 	                service apache2 restart
 	
-	                echo -e "${GN}Apache2 installed.\n${NC}" >&10
+	                echo -e "${GN}Apache2 installed.\n${NC}" >&5
 	        fi
 	fi
 
 else
-	echo -e "${GN}Step 4: Installing Nginx...\n${NC}" >&10 ### Default choice 
+	echo -e "${GN}Step 4: Installing Nginx...\n${NC}" >&5 ### Default choice 
 
 	# Check nginx installation in the system
 	ps aux | grep -v grep | grep nginx 1
@@ -353,20 +354,20 @@ else
 	
 	if (( $CHECK_NGINX_PROCESS == 0 )) || (( $CHECK_NGINX_INSTALLATION == 0 ))
 	then
-		echo -e  "${RD}Nginx detected. Skipping installation. Configure Nginx manually.\n${NC}" >&10
+		echo -e  "${RD}Nginx detected. Skipping installation. Configure Nginx manually.\n${NC}" >&5
 	else
 	        # Install nginx
 	        # Checking running web server
 	        lsof -i :80 | grep LISTEN 
 	        if (( $? == 0 ))
 	        then
-	               	echo -e  "${RD}Port 80 taken.\n ${NC}" >&10
-	               	echo -e  "${RD}Skipping Nginx installation. Install Nginx manually.\n ${NC}" >&10
+	               	echo -e  "${RD}Port 80 taken.\n ${NC}" >&5
+	               	echo -e  "${RD}Skipping Nginx installation. Install Nginx manually.\n ${NC}" >&5
 	        else
 	        	apt-get install -y nginx ${PHP_VERSION}-fpm
 	        	if (( $? >= 1 ))
 	            	  then
-	                	echo -e  "${RD}\nCould not install Nginx. Exiting.${NC}" >&10
+	                	echo -e  "${RD}\nCould not install Nginx. Exiting.${NC}" >&5
 	                	exit 1
 	        	fi
 	        	# Change php fpm configuration file
@@ -405,13 +406,13 @@ else
 	        
 	        	service ${PHP_VERSION}-fpm restart && service nginx restart
 	        
-	        	echo -e "${GN}Nginx installed.\n${NC}" >&10
+	        	echo -e "${GN}Nginx installed.\n${NC}" >&5
 	        fi
 	fi
 fi
 	
 ### Step 5. Installing Composer
-echo -e "${GN}Step 5: Installing Composer...\n${NC}" >&10
+echo -e "${GN}Step 5: Installing Composer...\n${NC}" >&5
 
 curl -sS https://getcomposer.org/installer -o /tmp/composer-setup.php
 
@@ -419,16 +420,16 @@ php /tmp/composer-setup.php --install-dir=/usr/local/bin --filename=composer
 
 if (( $? >= 1 ))
 then
-        echo -e  "${RD}\n${ERROR_STRING}${NC}" >&10
+        echo -e  "${RD}\n${ERROR_STRING}${NC}" >&5
         exit 1
 fi
-echo -e "${GN}Composer installed.\n${NC}" >&10
+echo -e "${GN}Composer installed.\n${NC}" >&5
 
 ### Step 6. Installing MySQL
 if [[ $MYSQL == TRUE ]] ### Only with key --with-mysql
 then
-	echo -e "${GN}Step 6: Installing Database for DreamFactory...\n${NC}" >&10
-	
+	echo -e "${GN}Step 6: Installing Database for DreamFactory...\n${NC}" >&5
+
 	dpkg -l | grep mysql | cut -d " " -f 3 | grep -E "^mysql" | grep -E -v "^mysql-client" 
 	CHECK_MYSQL_INSTALLATION=$(echo $?)
 	
@@ -440,7 +441,7 @@ then
 	
 	if (( $CHECK_MYSQL_PROCESS == 0 )) || (( $CHECK_MYSQL_INSTALLATION == 0 )) || (( $CHECK_MYSQL_PORT == 0 ))
 	then
-		echo -e  "${RD}MySQL Database detected in the system. Skipping installation. \n${NC}" >&10
+		echo -e  "${RD}MySQL Database detected in the system. Skipping installation. \n${NC}" >&5
 		DB_FOUND=TRUE
 	else
 		if (( $CURRENT_OS == 16 ))
@@ -453,24 +454,24 @@ then
 	        	apt-key adv --recv-keys --keyserver hkp://keyserver.ubuntu.com:80 0xF1656F24C74CD1D8
 	        	add-apt-repository 'deb [arch=amd64,arm64,ppc64el] http://mariadb.petarmaric.com/repo/10.3/ubuntu bionic main'
 		else
-			echo -e "${RD} The script support only Ubuntu 16 and 18 versions. Exit.\n ${NC}" >&10
+			echo -e "${RD} The script support only Ubuntu 16 and 18 versions. Exit.\n ${NC}" >&5
 			exit 1
 	        fi
 	       
 		apt-get update
 	       
-		echo -e  "${MG}Please choose a strong MySQL root user password: ${NC}" >&10
+		echo -e  "${MG}Please choose a strong MySQL root user password: ${NC}" >&5
         	read DB_PASS
 		if [[ -z $DB_PASS ]]
                 then
                         until [[ ! -z $DB_PASS ]]
                         do
-                                echo -e "${RD}The password can't be empty!${NC}" >&10
+                                echo -e "${RD}The password can't be empty!${NC}" >&5
                                 read DB_PASS
                         done
                 fi
 
-		echo -e  "${GN}\nPassword accepted.${NC}\n" >&10
+		echo -e  "${GN}\nPassword accepted.${NC}\n" >&5
 	        # Disable interactive mode in installation mariadb. Set generated above password.
 		export DEBIAN_FRONTEND="noninteractive"
 		debconf-set-selections <<< "mariadb-server mysql-server/root_password password $DB_PASS"
@@ -480,22 +481,22 @@ then
 	        
 	        if (( $? >= 1 ))
 	        then
-	                echo -e  "${RD}\n${ERROR_STRING}${NC}" >&10
+	                echo -e  "${RD}\n${ERROR_STRING}${NC}" >&5
 	                exit 1
 	        fi
 	
 		service mariadb start
 		if (( $? >= 1 ))
         	then
-                	echo -e  "${RD}\nCould not start MariaDB.. Exit ${NC}" >&10
+                	echo -e  "${RD}\nCould not start MariaDB.. Exit ${NC}" >&5
                 	exit 1
         	fi
 	fi
 	
-	echo -e "${GN}Database for DreamFactory installed.\n${NC}" >&10
+	echo -e "${GN}Database for DreamFactory installed.\n${NC}" >&5
 
 	### Step 7. Configuring DreamFactory system database
-	echo -e "${GN}Step 7: Configure DreamFactory system database.\n${NC}" >&10
+	echo -e "${GN}Step 7: Configure DreamFactory system database.\n${NC}" >&5
 	
 	DB_INSTALLED=FALSE
 
@@ -503,7 +504,7 @@ then
 	# the DreamFactory system database.	
 	if [[ $DB_FOUND == TRUE ]]
 	then
-	        echo -e "${MG}Is DreamFactory MySQL system database already configured? [Yy/Nn] ${NC}" >&10
+	        echo -e "${MG}Is DreamFactory MySQL system database already configured? [Yy/Nn] ${NC}" >&5
 	        read DB_ANSWER
 	        if [[ -z $DB_ANSWER ]]
 	        then
@@ -516,7 +517,7 @@ then
 		# MySQL system database is not installed, but MySQL is, so let's
 		# prompt the user for the root password.
 		else
-			echo -e "\n${MG}Enter MySQL root password: ${NC} " >&10
+			echo -e "\n${MG}Enter MySQL root password: ${NC} " >&5
 	        	read DB_PASS
 	
 	        	# Test DB access
@@ -527,8 +528,8 @@ then
 				TRYS=0
 	                	until [[ $ACCESS == TRUE ]]
 	                	do
-	                        	echo -e "${RD}\nPassword incorrect!\n ${NC}" >&10
-	                        	echo -e "${MG}Enter root user password:\n ${NC}" >&10
+	                        	echo -e "${RD}\nPassword incorrect!\n ${NC}" >&5
+	                        	echo -e "${MG}Enter root user password:\n ${NC}" >&5
 	                        	read DB_PASS
 	                        	mysql -h localhost -u root -p$DB_PASS -e"quit" 
 	                        	if (( $? == 0 ))
@@ -538,7 +539,7 @@ then
 					TRYS=$((TRYS + 1))
 					if (( $TRYS == 3 ))
 					then
-						echo -e "\n${RD}Exit \n${NC}" >&10
+						echo -e "\n${RD}Exitr.\n${NC}" >&5
 						exit 1	
 					fi
 	                	done
@@ -556,41 +557,41 @@ then
 	        mysql -h localhost -u root -p$DB_PASS -e"quit"
 	        if (( $? >= 1 ))
 	        then
-	                echo -e "${RD}Connection to Database failed. Exit \n${NC}" >&10
+	                echo -e "${RD}Connection to Database failed. Exit \n${NC}" >&5
 	                exit 1
 	        fi
-		echo -e "${MG}What would you like to name your system database? (e.g. dreamfactory) ${NC}" >&10
+		echo -e "${MG}What would you like to name your system database? (e.g. dreamfactory) ${NC}" >&5
 		read DF_SYSTEM_DB
 		if [[ -z $DF_SYSTEM_DB ]]
                 then
 			until [[ ! -z $DF_SYSTEM_DB ]]
 			do
-				echo -e "${RD}The name can't be empty!${NC}" >&10
+				echo -e "${RD}The name can't be empty!${NC}" >&5
 				read DF_SYSTEM_DB
 			done
                 fi
 
 	        echo "CREATE DATABASE ${DF_SYSTEM_DB};" | mysql -u root -p${DB_PASS}
 	
-		echo -e "\n${MG}Please create a MySQL DreamFactory system database user name (e.g. dfadmin): ${NC}" >&10	
+		echo -e "\n${MG}Please create a MySQL DreamFactory system database user name (e.g. dfadmin): ${NC}" >&5
 		read DF_SYSTEM_DB_USER
 		if [[ -z $DF_SYSTEM_DB_USER ]]
                 then
                         until [[ ! -z $DF_SYSTEM_DB_USER ]]
                         do
-                                echo -e "${RD}The name can't be empty!${NC}" >&10
+                                echo -e "${RD}The name can't be empty!${NC}" >&5
                                 read DF_SYSTEM_DB_USER
                         done
                 fi
 
 
-		echo -e "\n${MG}Please create a secure MySQL DreamFactory system database user password: ${NC}" >&10
+		echo -e "\n${MG}Please create a secure MySQL DreamFactory system database user password: ${NC}" >&5
 		read DF_SYSTEM_DB_PASSWORD
                 if [[ -z $DF_SYSTEM_DB_PASSWORD ]]
 		then
                         until [[ ! -z $DF_SYSTEM_DB_PASSWORD ]]
                         do
-                                echo -e "${RD}The name can't be empty!${NC}" >&10
+                                echo -e "${RD}The name can't be empty!${NC}" >&5
                                 read DF_SYSTEM_DB_PASSWORD
                         done
                 fi	
@@ -598,17 +599,17 @@ then
 	        echo "GRANT ALL PRIVILEGES ON ${DF_SYSTEM_DB}.* to \"${DF_SYSTEM_DB_USER}\"@\"localhost\" IDENTIFIED BY \"${DF_SYSTEM_DB_PASSWORD}\";" | mysql -u root -p${DB_PASS} 
 		echo "FLUSH PRIVILEGES;" | mysql -u root -p${DB_PASS} 
 	
-	        echo -e "\n${GN}Database configuration finished.\n${NC}" >&10
+	        echo -e "\n${GN}Database configuration finished.\n${NC}" >&5
 	else
-	        echo -e "${GN}Skipping...\n${NC}" >&10
+	        echo -e "${GN}Skipping...\n${NC}" >&5
 	fi
 else
-	echo -e "${GN}Step 6: Skipping DreamFactory system database installation.\n" >&10
-	echo -e "Step 7: Skipping DreamFactory system database configuration.\n${NC}" >&10
+	echo -e "${GN}Step 6: Skipping DreamFactory system database installation.\n" >&5
+	echo -e "Step 7: Skipping DreamFactory system database configuration.\n${NC}" >&5
 fi
 
 ### Step 8. Install DreamFactory		
-echo -e "${GN}Step 8: Installing DreamFactory...\n ${NC}" >&10
+echo -e "${GN}Step 8: Installing DreamFactory...\n ${NC}" >&5
 
 ls -d /opt/dreamfactory
 if (( $? >= 1 ))
@@ -617,16 +618,16 @@ then
 	git clone https://github.com/dreamfactorysoftware/dreamfactory.git /opt/dreamfactory
 	if (( $? >= 1 ))
 	then
-        	echo -e  "${RD}\nCould not clone DreamFactory repository. Exiting. ${NC}" >&10
+        	echo -e  "${RD}\nCould not clone DreamFactory repository. Exiting. ${NC}" >&5
         	exit 1
 	fi
 	DF_CLEAN_INSTALLATION=TRUE
 else
-	echo -e  "${RD}DreamFactory installation folder detected. Skipping installation.\n${NC}" >&10
+	echo -e  "${RD}DreamFactory installation folder detected. Skipping installation.\n${NC}" >&5
 	DF_CLEAN_INSTALLATION=FALSE
 fi
 
-echo -e "${MG}Do you have a commercial DreamFactory license? [Yy/Nn]${NC} " >&10
+echo -e "${MG}Do you have a commercial DreamFactory license? [Yy/Nn]${NC} " >&5
 read ANSWER 
 if [[ -z $ANSWER ]]
 then
@@ -634,7 +635,7 @@ then
 fi
 if [[ $ANSWER =~ ^[Yy]$ ]]
 then
-	echo -e "${MG}\nEnter path to license files: [./]${NC}"  >&10
+	echo -e "${MG}\nEnter path to license files: [./]${NC}"  >&5
 	read LICENSE_PATH 
        	if [[ -z $LICENSE_PATH ]]
 	then
@@ -643,14 +644,14 @@ then
 	ls $LICENSE_PATH/composer.{json,lock,json-dist} 
 	if (( $? >= 1 ))
         then
-                echo -e  "${RD}\nLicense not found. Skipping.\n${NC}" >&10
+                echo -e  "${RD}\nLicense not found. Skipping.\n${NC}" >&5
         else
 		cp $LICENSE_PATH/composer.{json,lock,json-dist} /opt/dreamfactory/
 		LICENSE_INSTALLED=TRUE
-		echo -e "\n${GN}Licenses installed. ${NC}\n" >&10
+		echo -e "\n${GN}Licenses installed. ${NC}\n" >&5
 	fi
 else
-	echo -e  "\n${RD}Installing DreamFactory OSS version.\n${NC}" >&10
+	echo -e  "\n${RD}Installing DreamFactory OSS version.\n${NC}" >&5
 fi
 chown -R $CURRENT_USER /opt/dreamfactory && cd /opt/dreamfactory 
 
@@ -663,10 +664,12 @@ else
     sudo -u $CURRENT_USER bash -c "composer install --no-dev --ignore-platform-reqs"
 fi
 
+### Shutdown silent mode because php artisan df:setup and df:env will get troubles with prompts.
+exec 1>&5 5>&-
+
 if [[ $DB_INSTALLED == FALSE ]]
 then
-
-        sudo -u  $CURRENT_USER bash -c "php artisan df:env \
+        sudo -u  $CURRENT_USER bash -c "php artisan df:env -q \
                 --db_connection=mysql \
                 --db_host=127.0.0.1 \
                 --db_port=3306 \
@@ -675,17 +678,13 @@ then
                 --db_password=$(echo $DF_SYSTEM_DB_PASSWORD | sed 's/['\'']//g')"
         sed -i 's/\#DB\_CHARSET\=/DB\_CHARSET\=utf8/g' .env
         sed -i 's/\#DB\_COLLATION\=/DB\_COLLATION\=utf8\_unicode\_ci/g' .env
-	#echo -e "\n${MG}Database root password:${NC} $DB_PASS" >&10
         echo -e "\n"
 	MYSQL_INSTALLED=TRUE
 
 elif [[ ! $MYSQL == TRUE && $DF_CLEAN_INSTALLATION == TRUE ]]
 then
-	sudo -u  $CURRENT_USER bash -c "php artisan df:env" >&10
+	sudo -u  $CURRENT_USER bash -c "php artisan df:env" 
 fi
-
-### Shutdown silent mode because php artisan df:setup will get troubles with prompts.
-exec 1>&10 10>&-
 
 if [[ $DF_CLEAN_INSTALLATION == TRUE ]]
 then
@@ -696,14 +695,17 @@ if [[  $LICENSE_INSTALLED == TRUE || $DF_CLEAN_INSTALLATION == FALSE ]]
 then
 	php artisan migrate --seed
 	sudo -u $CURRENT_USER bash -c "php artisan config:clear -q"
-
+	
 	###Add license key to .env file
-	grep composer.json .env > /dev/null
-	if (( $? >= 1 ))
+	if [[ $LICENSE_INSTALLED == TRUE ]]
 	then
-        	echo -e "\nDF_LICENSE_KEY=/opt/dreamfactory/composer.json" >> .env
-        	echo "DF_LICENSE_KEY=/opt/dreamfactory/composer.lock" >> .env
-        	echo "DF_LICENSE_KEY=/opt/dreamfactory/composer.json-dist" >> .env
+		grep composer.json .env > /dev/null
+		if (( $? >= 1 ))
+		then
+        		echo -e "\nDF_LICENSE_KEY=/opt/dreamfactory/composer.json" >> .env
+        		echo "DF_LICENSE_KEY=/opt/dreamfactory/composer.lock" >> .env
+        		echo "DF_LICENSE_KEY=/opt/dreamfactory/composer.json-dist" >> .env
+		fi
 	fi
 
 fi
@@ -714,6 +716,11 @@ sudo -u $CURRENT_USER bash -c "php artisan cache:clear -q"
 
 echo -e "\n${GN}Installation finished! ${NC}"
 
+if [[ $DEBUG == TRUE ]]
+then
+	echo -e "\n${RD}The log file saved in: /tmp/dreamfactory_installer.log ${NC}"
+
+fi
 ### Summary table
 if [[ $MYSQL_INSTALLED == TRUE ]]
 then

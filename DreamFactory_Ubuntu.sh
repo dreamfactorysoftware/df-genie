@@ -673,8 +673,8 @@ then
                 --db_database=$(echo $DF_SYSTEM_DB) \
                 --db_username=$(echo $DF_SYSTEM_DB_USER) \
                 --db_password=$(echo $DF_SYSTEM_DB_PASSWORD | sed 's/['\'']//g')"
-        sed -i 's/\#DB\_CHARSET\=utf8/DB\_CHARSET\=utf8/g' .env
-        sed -i 's/\#DB\_COLLATION\=utf8\_unicode\_ci/DB\_COLLATION\=utf8\_unicode\_ci/g' .env
+        sed -i 's/\#DB\_CHARSET\=/DB\_CHARSET\=utf8/g' .env
+        sed -i 's/\#DB\_COLLATION\=/DB\_COLLATION\=utf8\_unicode\_ci/g' .env
 	#echo -e "\n${MG}Database root password:${NC} $DB_PASS" >&10
         echo -e "\n"
 	MYSQL_INSTALLED=TRUE
@@ -690,18 +690,29 @@ exec 1>&10 10>&-
 if [[ $DF_CLEAN_INSTALLATION == TRUE ]]
 then
 	sudo -u $CURRENT_USER bash -c "php artisan df:setup" 
-fi
+fi 
 
 if [[  $LICENSE_INSTALLED == TRUE || $DF_CLEAN_INSTALLATION == FALSE ]]
 then
 	php artisan migrate --seed
 	sudo -u $CURRENT_USER bash -c "php artisan config:clear -q"
+
+	###Add license key to .env file
+	grep composer.json .env > /dev/null
+	if (( $? >= 1 ))
+	then
+        	echo -e "\nDF_LICENSE_KEY=/opt/dreamfactory/composer.json" >> .env
+        	echo "DF_LICENSE_KEY=/opt/dreamfactory/composer.lock" >> .env
+        	echo "DF_LICENSE_KEY=/opt/dreamfactory/composer.json-dist" >> .env
+	fi
+
 fi
 
 chmod -R 2775 storage/ bootstrap/cache/
 chown -R www-data:$CURRENT_USER storage/ bootstrap/cache/
 sudo -u $CURRENT_USER bash -c "php artisan cache:clear -q"
-echo -e "\n${GN}Installation finished ${NC}!"
+
+echo -e "\n${GN}Installation finished! ${NC}"
 
 ### Summary table
 if [[ $MYSQL_INSTALLED == TRUE ]]

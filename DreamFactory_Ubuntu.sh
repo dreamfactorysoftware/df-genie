@@ -346,7 +346,7 @@ else
 	echo -e "${GN}Step 4: Installing Nginx...\n${NC}" >&5 ### Default choice 
 
 	# Check nginx installation in the system
-	ps aux | grep -v grep | grep nginx 1
+	ps aux | grep -v grep | grep nginx
 	CHECK_NGINX_PROCESS=$(echo $?)
 	
 	dpkg -l | grep nginx | cut -d " " -f 3 | grep -E "nginx$" 

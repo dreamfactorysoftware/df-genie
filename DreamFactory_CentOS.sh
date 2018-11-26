@@ -26,13 +26,7 @@ else
         exec > /tmp/dreamfactory_installer.log 2>&1
 fi
 
-ls -f /etc/os-release
-if (( $? == 0))
-then
-	CURRENT_OS=$(cat /etc/os-release | grep VERSION_ID | cut -d "=" -f 2 | cut -c 2)
-else
-	CURRENT_OS=$(lsb_release -r | cut -f 2 | cut -c 1)
-fi
+CURRENT_OS=$(cat /etc/os-release | grep VERSION_ID | cut -d "=" -f 2 | cut -c 2)
 
 ERROR_STRING="Installation error. Exiting"
 
@@ -83,16 +77,12 @@ echo -e "${GN}The system dependencies have been successfully installed.\n${NC}" 
 echo -e "${GN}Step 2: Installing PHP...\n${NC}" >&5
 
 # Install the php repository
-if  (( $CURRENT_OS == 6 ))
-then
-	rpm -Uvh https://dl.fedoraproject.org/pub/epel/epel-release-latest-6.noarch.rpm
-	rpm -Uvh http://rpms.famillecollet.com/enterprise/remi-release-6.rpm
-elif (( $CURRENT_OS == 7 ))
+if  (( $CURRENT_OS == 7 ))
 then
 	rpm -Uvh https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
 	rpm -Uvh http://rpms.famillecollet.com/enterprise/remi-release-7.rpm
 else
-	echo -e "${RD} The script support only CentOS(RedHat) 6/7 versions. Exit.\n ${NC}"  >&5
+	echo -e "${RD} The script support only CentOS(RedHat) 7 versions. Exit.\n ${NC}"  >&5
         exit 1
 fi
 

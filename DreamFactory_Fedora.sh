@@ -44,9 +44,8 @@ CURRENT_USER=$(logname)
 
 if [[ -z $SUDO_USER ]] && [[ -z $CURRENT_USER ]]
 then
-        echo -e "${RD} \n" >&5
-        read -p "Enter username for installation DreamFactory:" CURRENT_USER
-        echo -e "${NC} \n" >&5 
+        echo -e "${RD}Enter username for installation DreamFactory:${NC} " >&5
+        read -p  CURRENT_USER
 fi
 
 if [[ ! -z $SUDO_USER ]]
@@ -85,7 +84,7 @@ then
 	dnf config-manager --set-enabled remi-php72
 elif (( ! $CURRENT_OS == 28 ))
 then
-	echo -e "${RD} The script support only Fedora 27/28 versions. Exit.\n ${NC}"
+	echo -e "${RD} The script support only Fedora 27/28 versions. Exit.\n ${NC}"  >&5
         exit 1
 fi
 
@@ -292,7 +291,7 @@ if [[ $APACHE == TRUE ]] ### Only with key --apache
 then
 	echo -e "${GN}Step 4: Installing Apache...\n${NC}" >&5
 	# Check Apache installation status
-	ps aux | grep -v grep | grep apache2
+	ps aux | grep -v grep | grep httpd
 	CHECK_APACHE_PROCESS=$(echo $?)
 
 	yum list installed | grep -E "^httpd.x86_64"
@@ -317,8 +316,6 @@ then
 	                        exit 1
 	                fi
 	                #a2enmod rewrite
-	                echo "extension=pdo_sqlsrv.so" >> /etc/php/${PHP_VERSION_INDEX}/apache2/conf.d/30-pdo_sqlsrv.ini
-	                echo "extension=sqlsrv.so" >> /etc/php/${PHP_VERSION_INDEX}/apache2/conf.d/20-sqlsrv.ini
 	                # Create apache2 site entry
 	                WEB_PATH=/etc/httpd/conf.d/dreamfactory.conf
 			echo '<VirtualHost *:80>' > $WEB_PATH

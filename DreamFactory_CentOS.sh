@@ -162,12 +162,7 @@ fi
 php -m | grep -E "^sqlsrv"
 if (( $? >= 1 ))
 then
-	if (( $CURRENT_OS == 7 ))
-	then
-		curl https://packages.microsoft.com/config/rhel/7/prod.repo > /etc/yum.repos.d/mssql-release.repo
-	else 
-		curl https://packages.microsoft.com/config/rhel/6/prod.repo > /etc/yum.repos.d/mssql-release.repo
-	fi
+	curl https://packages.microsoft.com/config/rhel/7/prod.repo > /etc/yum.repos.d/mssql-release.repo
 	ACCEPT_EULA=Y yum install -y msodbcsql17 mssql-tools unixODBC-devel
         if (( $? >= 1 ))
         then

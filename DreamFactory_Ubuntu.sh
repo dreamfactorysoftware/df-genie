@@ -7,6 +7,8 @@ NC='\033[0m' # No Color
 
 DEFAULT_PHP_VERSION="php7.2"
 
+CURRENT_OS=$(cat /etc/os-release | grep VERSION_ID | cut -d "=" -f 2 | cut -c 2-3)
+
 ERROR_STRING="Installation error. Exiting"
 
 # CHECK FOR KEYS
@@ -30,8 +32,6 @@ else
 	exec > /tmp/dreamfactory_installer.log 2>&1
 fi
 
-CURRENT_OS=$(cat /etc/os-release | grep VERSION_ID | cut -d "=" -f 2 | cut -c 2-3)
-
 clear >&5
 
 # Make sure script run as sudo
@@ -46,9 +46,8 @@ CURRENT_USER=$(logname)
 
 if [[ -z $SUDO_USER ]] && [[ -z $CURRENT_USER ]]
 then
-        echo -e "${RD} \n" >&5
-        read -p "Enter username for installation DreamFactory:" CURRENT_USER
-        echo -e "${NC} \n" >&5 
+        echo -e "${RD} Enter username for installation DreamFactory:${NC}" >&5
+        read  CURRENT_USER
 fi
 
 if [[ ! -z $SUDO_USER ]]
@@ -58,7 +57,7 @@ fi
 
 ### STEP 1. Install system dependencies
 echo -e "${GN}Step 1: Installing system dependencies...\n${NC}" >&5
-apt-get update > /dev/null 
+apt-get update 
 apt-get install -y git \
 	curl \
 	zip \
@@ -149,7 +148,7 @@ then
 		printf "\n" | pecl install mcrypt-1.0.1
 		if (( $? >= 1 ))
 		then
-	        	echo -e  "${RD}\n${ERROR_STRING}${NC}" >&5
+	        	echo -e  "${RD}\nMcrypt extension installation error.${NC}" >&5
 	        	exit 1
 		fi
 		echo "extension=mcrypt.so" > /etc/php/${PHP_VERSION_INDEX}/mods-available/mcrypt.ini
@@ -157,7 +156,7 @@ then
 	else
 		apt-get install ${PHP_VERSION}-mcrypt
 	fi
-	php -m | grep "mcrypt" 
+	php -m | grep -E "^mcrypt" 
 	if (( $? >= 1 ))
 	then
 	        echo -e  "${RD}\nMcrypt installation error.${NC}" >&5
@@ -171,7 +170,7 @@ then
 	pecl install mongodb
 	if (( $? >= 1 ))
 	then
-	        echo -e  "${RD}\n${ERROR_STRING}${NC}" >&5
+	        echo -e  "${RD}\nMongo DB extension installation error.${NC}" >&5
 	        exit 1
 	fi
 	echo "extension=mongodb.so" > /etc/php/${PHP_VERSION_INDEX}/mods-available/mongodb.ini
@@ -508,7 +507,7 @@ then
 	        read DB_ANSWER
 	        if [[ -z $DB_ANSWER ]]
 	        then
-	                DB_ANSWER=N
+	                DB_ANSWER=Y
 	        fi
 	        if [[ $DB_ANSWER =~ ^[Yy]$ ]]
 	        then
@@ -659,9 +658,9 @@ chown -R $CURRENT_USER /opt/dreamfactory && cd /opt/dreamfactory
 # to composer command
 if [[ $ORACLE == TRUE ]]
 then
-    sudo -u $CURRENT_USER bash -c "composer install --no-dev"
+    sudo -u $CURRENT_USER bash -c "/usr/local/bin/composer install --no-dev"
 else
-    sudo -u $CURRENT_USER bash -c "composer install --no-dev --ignore-platform-reqs"
+    sudo -u $CURRENT_USER bash -c "/usr/local/bin/composer install --no-dev --ignore-platform-reqs"
 fi
 
 ### Shutdown silent mode because php artisan df:setup and df:env will get troubles with prompts.

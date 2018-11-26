@@ -46,9 +46,8 @@ CURRENT_USER=$(logname)
 
 if [[ -z $SUDO_USER ]] && [[ -z $CURRENT_USER ]]
 then
-        echo -e "${RD} \n" >&5
-        read -p "Enter username for installation DreamFactory:" CURRENT_USER
-        echo -e "${NC} \n" >&5 
+        echo -e "${RD}Enter username for installation DreamFactory:${NC}" >&5
+        read  CURRENT_USER
 fi
 
 if [[ ! -z $SUDO_USER ]]
@@ -637,9 +636,9 @@ chown -R $CURRENT_USER /opt/dreamfactory && cd /opt/dreamfactory
 # to composer command
 if [[ $ORACLE == TRUE ]]
 then
-    su $CURRENT_USER -c "composer install --no-dev"
+    su $CURRENT_USER -c "/usr/local/bin/composer install --no-dev"
 else
-    su $CURRENT_USER -c "composer install --no-dev --ignore-platform-reqs"
+    su $CURRENT_USER -c "/usr/local/bin/composer install --no-dev --ignore-platform-reqs"
 fi
 
 ### Shutdown silent mode because php artisan df:setup and df:env will get troubles with prompts.

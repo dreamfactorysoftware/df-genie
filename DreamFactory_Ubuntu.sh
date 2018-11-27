@@ -116,7 +116,8 @@ apt-get install -y ${PHP_VERSION}-common \
 	${PHP_VERSION}-mbstring \
 	${PHP_VERSION}-zip \
 	${PHP_VERSION}-bcmath \
-	${PHP_VERSION}-dev 
+	${PHP_VERSION}-dev \
+	${PHP_VERSION}-ldap
 
 if (( $? >= 1 ))
 then

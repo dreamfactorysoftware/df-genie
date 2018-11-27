@@ -126,166 +126,12 @@ fi
 
 echo -e "${GN}${PHP_VERSION} installed.\n${NC}" >&5
 
-### Step 3. Configure PHP development tools
-echo -e "${GN}Step 3: Configuring PHP Extensions...\n${NC}" >&5
 
-apt-get install -y php-pear
 
-if (( $? >= 1 ))
-then
-	echo -e  "${RD}\n${ERROR_STRING}${NC}">&5
-        exit 1
-fi
-
-pecl channel-update pecl.php.net
-
-### Install MCrypt
-php -m | grep -E "^mcrypt"
-if (( $? >= 1 ))
-then
-	if [[ $MCRYPT == 0 ]]
-	then
-		printf "\n" | pecl install mcrypt-1.0.1
-		if (( $? >= 1 ))
-		then
-	        	echo -e  "${RD}\nMcrypt extension installation error.${NC}" >&5
-	        	exit 1
-		fi
-		echo "extension=mcrypt.so" > /etc/php/${PHP_VERSION_INDEX}/mods-available/mcrypt.ini
-		phpenmod mcrypt
-	else
-		apt-get install ${PHP_VERSION}-mcrypt
-	fi
-	php -m | grep -E "^mcrypt" 
-	if (( $? >= 1 ))
-	then
-	        echo -e  "${RD}\nMcrypt installation error.${NC}" >&5
-	fi
-fi
-
-### Install MongoDB drivers
-php -m | grep -E "^mongodb"
-if (( $? >= 1 ))
-then
-	pecl install mongodb
-	if (( $? >= 1 ))
-	then
-	        echo -e  "${RD}\nMongo DB extension installation error.${NC}" >&5
-	        exit 1
-	fi
-	echo "extension=mongodb.so" > /etc/php/${PHP_VERSION_INDEX}/mods-available/mongodb.ini
-	phpenmod mongodb
-	php -m | grep -E  "^mongodb"
-	if (( $? >= 1 ))
-	then
-	        echo -e  "${RD}\nMongoDB installation error.${NC}" >&5
-	fi
-fi
-
-### Install MS SQL Drivers
-php -m | grep -E "^sqlsrv"
-if (( $? >= 1 ))
-then
-	curl https://packages.microsoft.com/keys/microsoft.asc | apt-key add -
-	if (( $CURRENT_OS == 16 ))
-	then
-		curl https://packages.microsoft.com/config/ubuntu/16.04/prod.list > /etc/apt/sources.list.d/mssql-release.list
-	elif (( $CURRENT_OS == 18 ))
-	then
-		curl https://packages.microsoft.com/config/ubuntu/18.04/prod.list > /etc/apt/sources.list.d/mssql-release.list
-	else	
-		echo -e "${RD} The script support only Ubuntu 16 and 18 versions. Exit.\n ${NC}">&5
-		exit 1
-	fi
-	apt-get update  
-	ACCEPT_EULA=Y apt-get install -y msodbcsql17 mssql-tools unixodbc-dev
-	sudo -u $CURRENT_USER bash -c "echo export PATH=$PATH:/opt/mssql-tools/bin >> $HOME/.bash_profile"
-	sudo -u $CURRENT_USER bash -c "echo export PATH=$PATH:/opt/mssql-tools/bin >> $HOME/.bashrc"
-	sudo -u $CURRENT_USER bash -c "source $HOME/.bashrc"
-	
-	pecl install sqlsrv
-	if (( $? >= 1 ))
-	then
-	        echo -e  "${RD}\nMS SQL Server extension installation error.${NC}" >&5
-	        exit 1
-	fi
-	echo "extension=sqlsrv.so" > /etc/php/${PHP_VERSION_INDEX}/mods-available/sqlsrv.ini
-	phpenmod sqlsrv
-	php -m | grep -E  "^sqlsrv" 
-	if (( $? >= 1 ))
-	then
-	        echo -e  "${RD}\nMS SQL Server extension installation error.${NC}" >&5
-	fi
-fi	
-
-### DRIVERS FOR MSSQL (pdo_sqlsrv)
-php -m | grep -E "^pdo_sqlsrv"
-if (( $? >= 1 ))
-then
-	pecl install pdo_sqlsrv
-	if (( $? >= 1 ))
-	then
-	        echo -e  "${RD}\npdo_sqlsrv extension installation error.${NC}" >&5
-	        exit 1
-	fi
-	echo "extension=pdo_sqlsrv.so" > /etc/php/${PHP_VERSION_INDEX}/mods-available/pdo_sqlsrv.ini
-	phpenmod pdo_sqlsrv
-	php -m | grep -E  "^pdo_sqlsrv"
-	if (( $? >= 1 ))
-	then
-		echo -e  "${RD}\nCould not install pdo_sqlsrv extension${NC}" >&5
-	fi
-fi
-
-### DRIVERS FOR ORACLE ( ONLY WITH KEY --oracle )
-php -m | grep -E "^oci8" 
-if (( $? >= 1 ))
-then
-	if [[ $ORACLE == TRUE ]]
-	then
-		echo -e "${MG}Enter path to the Oracle drivers: [./]${NC} " >&5
-        	read DRIVERS_PATH 
-        	if [[ -z $DRIVERS_PATH ]]
-        	then
-                	DRIVERS_PATH="."
-        	fi
-		unzip "$DRIVERS_PATH/instantclient-*.zip" -d /opt/oracle
-		if (( $? == 0 ))
-		then
-			echo -e  "${GN}Drivers found.\n${NC}" >&5
-	        	apt-get install -y libaio1
-			echo "/opt/oracle/instantclient_18_3" > /etc/ld.so.conf.d/oracle-instantclient.conf
-	        	ldconfig
-	        	sudo -u $CURRENT_USER bash -c "echo export LD_LIBRARY_PATH=/opt/oracle/instantclient_18_3:$LD_LIBRARY_PATH >> $HOME/.bash_profile"
-	        	sudo -u $CURRENT_USER bash -c "echo export LD_LIBRARY_PATH=/opt/oracle/instantclient_18_3:$LD_LIBRARY_PATH >> $HOME/.bashrc"
-	        	sudo -u $CURRENT_USER bash -c "echo export PATH=/opt/oracle/instantclient_18_3:$PATH >> $HOME/.bash_profile"
-	        	sudo -u $CURRENT_USER bash -c "echo export PATH=/opt/oracle/instantclient_18_3:$PATH >> $HOME/.bashrc"
-	        	sudo -u $CURRENT_USER bash -c "source $HOME/.bashrc"
-	        	printf "instantclient,/opt/oracle/instantclient_18_3\n" | pecl install oci8
-	        	if (( $? >= 1 ))
-			then
-	        		echo -e  "${RD}\nOracle instant client installation error${NC}" >&5
-	        		exit 1
-			fi
-			echo "extension=oci8.so" > /etc/php/${PHP_VERSION_INDEX}/mods-available/oci8.ini
-	        	phpenmod oci8
-			
-			php -m | grep oci8 
-			if (( $? >= 1 ))
-	        	then
-	        	        echo -e  "${RD}\nCould not install oci8 extension.${NC}" >&5
-	        	fi
-		else
-			echo -e  "${RD}Drivers not found. Skipping...\n${NC}" >&5
-		fi
-	fi
-fi
-echo -e "${GN}PHP Extensions configured.\n${NC}" >&5
-
-### Step 4. Install Apache
+### Step 3. Install Apache
 if [[ $APACHE == TRUE ]] ### Only with key --apache
 then
-	echo -e "${GN}Step 4: Installing Apache...\n${NC}" >&5
+	echo -e "${GN}Step 3: Installing Apache...\n${NC}" >&5
 	# Check Apache installation status
 	ps aux | grep -v grep | grep apache2
 	CHECK_APACHE_PROCESS=$(echo $?)
@@ -342,7 +188,7 @@ then
 	fi
 
 else
-	echo -e "${GN}Step 4: Installing Nginx...\n${NC}" >&5 ### Default choice 
+	echo -e "${GN}Step 3: Installing Nginx...\n${NC}" >&5 ### Default choice 
 
 	# Check nginx installation in the system
 	ps aux | grep -v grep | grep nginx
@@ -409,6 +255,162 @@ else
 	        fi
 	fi
 fi
+
+### Step 3. Configure PHP development tools
+echo -e "${GN}Step 4: Configuring PHP Extensions...\n${NC}" >&5
+
+apt-get install -y php-pear
+
+if (( $? >= 1 ))
+then
+	echo -e  "${RD}\n${ERROR_STRING}${NC}">&5
+        exit 1
+fi
+
+pecl channel-update pecl.php.net
+
+### Install MCrypt
+php -m | grep -E "^mcrypt"
+if (( $? >= 1 ))
+then
+	if [[ $MCRYPT == 0 ]]
+	then
+		printf "\n" | pecl install mcrypt-1.0.1
+		if (( $? >= 1 ))
+		then
+	        	echo -e  "${RD}\nMcrypt extension installation error.${NC}" >&5
+	        	exit 1
+		fi
+		echo "extension=mcrypt.so" > /etc/php/${PHP_VERSION_INDEX}/mods-available/mcrypt.ini
+		phpenmod -s ALL mcrypt
+	else
+		apt-get install ${PHP_VERSION}-mcrypt
+	fi
+	php -m | grep -E "^mcrypt" 
+	if (( $? >= 1 ))
+	then
+	        echo -e  "${RD}\nMcrypt installation error.${NC}" >&5
+	fi
+fi
+
+### Install MongoDB drivers
+php -m | grep -E "^mongodb"
+if (( $? >= 1 ))
+then
+	pecl install mongodb
+	if (( $? >= 1 ))
+	then
+	        echo -e  "${RD}\nMongo DB extension installation error.${NC}" >&5
+	        exit 1
+	fi
+	echo "extension=mongodb.so" > /etc/php/${PHP_VERSION_INDEX}/mods-available/mongodb.ini
+	phpenmod -s ALL mongodb
+	php -m | grep -E  "^mongodb"
+	if (( $? >= 1 ))
+	then
+	        echo -e  "${RD}\nMongoDB installation error.${NC}" >&5
+	fi
+fi
+
+### Install MS SQL Drivers
+php -m | grep -E "^sqlsrv"
+if (( $? >= 1 ))
+then
+	curl https://packages.microsoft.com/keys/microsoft.asc | apt-key add -
+	if (( $CURRENT_OS == 16 ))
+	then
+		curl https://packages.microsoft.com/config/ubuntu/16.04/prod.list > /etc/apt/sources.list.d/mssql-release.list
+	elif (( $CURRENT_OS == 18 ))
+	then
+		curl https://packages.microsoft.com/config/ubuntu/18.04/prod.list > /etc/apt/sources.list.d/mssql-release.list
+	else	
+		echo -e "${RD} The script support only Ubuntu 16 and 18 versions. Exit.\n ${NC}">&5
+		exit 1
+	fi
+	apt-get update  
+	ACCEPT_EULA=Y apt-get install -y msodbcsql17 mssql-tools unixodbc-dev
+	
+	pecl install sqlsrv
+	if (( $? >= 1 ))
+	then
+	        echo -e  "${RD}\nMS SQL Server extension installation error.${NC}" >&5
+	        exit 1
+	fi
+	echo "extension=sqlsrv.so" > /etc/php/${PHP_VERSION_INDEX}/mods-available/sqlsrv.ini
+	phpenmod -s ALL sqlsrv
+	php -m | grep -E  "^sqlsrv" 
+	if (( $? >= 1 ))
+	then
+	        echo -e  "${RD}\nMS SQL Server extension installation error.${NC}" >&5
+	fi
+fi	
+
+### DRIVERS FOR MSSQL (pdo_sqlsrv)
+php -m | grep -E "^pdo_sqlsrv"
+if (( $? >= 1 ))
+then
+	pecl install pdo_sqlsrv
+	if (( $? >= 1 ))
+	then
+	        echo -e  "${RD}\npdo_sqlsrv extension installation error.${NC}" >&5
+	        exit 1
+	fi
+	echo "extension=pdo_sqlsrv.so" > /etc/php/${PHP_VERSION_INDEX}/mods-available/pdo_sqlsrv.ini
+	phpenmod -s ALL pdo_sqlsrv
+	php -m | grep -E  "^pdo_sqlsrv"
+	if (( $? >= 1 ))
+	then
+		echo -e  "${RD}\nCould not install pdo_sqlsrv extension${NC}" >&5
+	fi
+fi
+
+### DRIVERS FOR ORACLE ( ONLY WITH KEY --oracle )
+php -m | grep -E "^oci8" 
+if (( $? >= 1 ))
+then
+	if [[ $ORACLE == TRUE ]]
+	then
+		echo -e "${MG}Enter path to the Oracle drivers: [./]${NC} " >&5
+        	read DRIVERS_PATH 
+        	if [[ -z $DRIVERS_PATH ]]
+        	then
+                	DRIVERS_PATH="."
+        	fi
+		unzip "$DRIVERS_PATH/instantclient-*.zip" -d /opt/oracle
+		if (( $? == 0 ))
+		then
+			echo -e  "${GN}Drivers found.\n${NC}" >&5
+	        	apt-get install -y libaio1
+			echo "/opt/oracle/instantclient_18_3" > /etc/ld.so.conf.d/oracle-instantclient.conf
+	        	ldconfig
+	        	printf "instantclient,/opt/oracle/instantclient_18_3\n" | pecl install oci8
+	        	if (( $? >= 1 ))
+			then
+	        		echo -e  "${RD}\nOracle instant client installation error${NC}" >&5
+	        		exit 1
+			fi
+			echo "extension=oci8.so" > /etc/php/${PHP_VERSION_INDEX}/mods-available/oci8.ini
+	        	phpenmod -s ALL oci8
+			php -m | grep oci8 
+			if (( $? >= 1 ))
+	        	then
+	        	        echo -e  "${RD}\nCould not install oci8 extension.${NC}" >&5
+	        	fi
+		else
+			echo -e  "${RD}Drivers not found. Skipping...\n${NC}" >&5
+		fi
+	fi
+fi
+
+if [[ $APACHE == TRUE ]]
+then
+	service apache2 reload
+else
+	service ${PHP_VERSION}-fpm reload
+fi
+
+echo -e "${GN}PHP Extensions configured.\n${NC}" >&5
+
 	
 ### Step 5. Installing Composer
 echo -e "${GN}Step 5: Installing Composer...\n${NC}" >&5

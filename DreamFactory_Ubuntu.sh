@@ -117,7 +117,8 @@ apt-get install -y ${PHP_VERSION}-common \
 	${PHP_VERSION}-zip \
 	${PHP_VERSION}-bcmath \
 	${PHP_VERSION}-dev \
-	${PHP_VERSION}-ldap
+	${PHP_VERSION}-ldap \
+	${PHP_VERSION}-pgsql
 
 if (( $? >= 1 ))
 then

@@ -630,32 +630,76 @@ else
 	DF_CLEAN_INSTALLATION=FALSE
 fi
 
-echo -e "${MG}Do you have a commercial DreamFactory license? [Yy/Nn]${NC} " >&5
-read ANSWER 
-if [[ -z $ANSWER ]]
+if [[ $DF_CLEAN_INSTALLATION == FALSE ]]
 then
-	ANSWER=N
-fi
-if [[ $ANSWER =~ ^[Yy]$ ]]
-then
-	echo -e "${MG}\nEnter path to license files: [./]${NC}"  >&5
-	read LICENSE_PATH 
-       	if [[ -z $LICENSE_PATH ]]
-	then
-		LICENSE_PATH="."
-	fi
-	ls $LICENSE_PATH/composer.{json,lock,json-dist} 
-	if (( $? >= 1 ))
+	ls /opt/dreamfactory/composer.{json,lock,json-dist}
+	if (( $? == 0 ))
         then
-                echo -e  "${RD}\nLicense not found. Skipping.\n${NC}" >&5
-        else
-		cp $LICENSE_PATH/composer.{json,lock,json-dist} /opt/dreamfactory/
-		LICENSE_INSTALLED=TRUE
-		echo -e "\n${GN}Licenses installed. ${NC}\n" >&5
+                echo -e  "${RD}Licenses files found. Are you want to install a new licenses? [Yy/Nn]${NC}" >&5
+		read LICENSE_FILE_ANSWER
+ 		if [[ -z $LICENSE_FILE_ANSWER ]]
+                then
+                	LICENSE_FILE_ANSWER=N
+                fi
+		LICENSE_FILE_EXIST=TRUE
+		
+	fi
+
+fi
+
+if [[ $LICENSE_FILE_EXIST == TRUE ]]
+then
+	if [[  $LICENSE_FILE_ANSWER =~ ^[Yy]$ ]]
+	then
+		echo -e "${MG}\nEnter path to license files: [./]${NC}"  >&5
+		read LICENSE_PATH 
+	       	if [[ -z $LICENSE_PATH ]]
+		then
+			LICENSE_PATH="."
+		fi
+		ls $LICENSE_PATH/composer.{json,lock,json-dist} 
+		if (( $? >= 1 ))
+	        then
+	                echo -e  "${RD}\nLicenses not found. Skipping.\n${NC}" >&5
+	        else
+			cp $LICENSE_PATH/composer.{json,lock,json-dist} /opt/dreamfactory/
+			LICENSE_INSTALLED=TRUE
+			echo -e "\n${GN}Licenses file installed. ${NC}\n" >&5
+		fi
+	else
+		echo -e  "\n${RD}Skipping...\n${NC}" >&5
 	fi
 else
-	echo -e  "\n${RD}Installing DreamFactory OSS version.\n${NC}" >&5
+	echo -e "${MG}Do you have a commercial DreamFactory license? [Yy/Nn]${NC} " >&5
+	read LICENSE_FILE_ANSWER
+	if [[ -z $LICENSE_FILE_ANSWER ]]
+	then
+		LICENSE_FILE_ANSWER=N
+        fi
+	if [[  $LICENSE_FILE_ANSWER =~ ^[Yy]$ ]]
+        then
+                echo -e "${MG}\nEnter path to license files: [./]${NC}"  >&5
+                read LICENSE_PATH
+                if [[ -z $LICENSE_PATH ]]
+                then
+                        LICENSE_PATH="."
+                fi
+                ls $LICENSE_PATH/composer.{json,lock,json-dist} 
+                if (( $? >= 1 ))
+                then
+                        echo -e  "${RD}\nLicenses not found. Skipping.\n${NC}" >&5
+                else
+                        cp $LICENSE_PATH/composer.{json,lock,json-dist} /opt/dreamfactory/
+                        LICENSE_INSTALLED=TRUE
+                        echo -e "\n${GN}Licenses file installed. ${NC}\n" >&5
+                fi
+        else
+                echo -e  "\n${RD}Installing DreamFactory OSS version.\n${NC}" >&5
+        fi
+
 fi
+
+	
 chown -R $CURRENT_USER /opt/dreamfactory && cd /opt/dreamfactory 
 
 # If Oracle is not installed, add the --ignore-platform-reqs option
@@ -699,18 +743,56 @@ then
 	php artisan migrate --seed
 	sudo -u $CURRENT_USER bash -c "php artisan config:clear -q"
 	
-	###Add license key to .env file
 	if [[ $LICENSE_INSTALLED == TRUE ]]
 	then
-		grep composer.json .env > /dev/null
-		if (( $? >= 1 ))
+		grep DF_LICENSE_KEY .env > /dev/null 2>&1 # Check for existing key.
+                if (( $? == 0 ))
+                then
+                        echo -e "\n${RD}The license key already installed. Are you want to install a new key? [Yy/Nn]${NC}" 
+                        read KEY_ANSWER 
+                        if [[ -z $KEY_ANSWER ]]
+                        then    
+                                KEY_ANSWER=N
+                        fi
+			NEW_KEY=TRUE
+		fi
+
+		if [[ $NEW_KEY == TRUE ]]
 		then
-        		echo -e "\nDF_LICENSE_KEY=/opt/dreamfactory/composer.json" >> .env
-        		echo "DF_LICENSE_KEY=/opt/dreamfactory/composer.lock" >> .env
-        		echo "DF_LICENSE_KEY=/opt/dreamfactory/composer.json-dist" >> .env
+        		if [[ $KEY_ANSWER =~ ^[Yy]$ ]] #Install new key
+                	then
+                	      	CURRENT_KEY=$(grep DF_LICENSE_KEY .env)
+				echo -e "${MG}\nPlease provide your new license key:${NC}"
+                		read LICENSE_KEY
+                		if [[ -z $LICENSE_KEY ]]
+                		then
+                	       		until [[ ! -z $LICENSE_KEY ]]
+                	       		do
+                	       			echo -e "${RD}\nThe field can't be empty!${NC}"
+                	  			read LICENSE_KEY
+                	        	done
+               			fi
+				###Change license key in .env file
+                	        sed -i "s/$CURRENT_KEY/DF_LICENSE_KEY=$LICENSE_KEY/" .env
+			else
+				echo -e "${RD}\nSkipping...${NC}" #Skip if key found in .env file and no need to update
+			fi
+		else
+			echo -e "${MG}\nPlease provide your license key:${NC}" #Install key if not found existing key.
+        		read LICENSE_KEY
+        		if [[ -z $LICENSE_KEY ]]
+        		then
+        			until [[ ! -z $LICENSE_KEY ]]
+                		do
+                			echo -e "${RD}The field can't be empty!${NC}"
+                			read LICENSE_KEY
+                	       	done
+              		fi
+         		###Add license key to .env file
+			echo -e "\nDF_LICENSE_KEY=${LICENSE_KEY}" >> .env
+	
 		fi
 	fi
-
 fi
 
 chmod -R 2775 storage/ bootstrap/cache/

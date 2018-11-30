@@ -11,6 +11,7 @@ CURRENT_OS=$(cat /etc/os-release | grep VERSION_ID | cut -d "=" -f 2 | cut -c 2-
 
 ERROR_STRING="Installation error. Exiting"
 
+CURRENT_PATH=$(pwd)
 # CHECK FOR KEYS
 while [[ -n $1 ]]
 do
@@ -18,6 +19,8 @@ do
         	--with-oracle) ORACLE=TRUE;;
 		--with-mysql) MYSQL=TRUE;;
 		--with-apache) APACHE=TRUE;;
+		--with-db2) DB2=TRUE;;
+		--with-cassandra) CASSANDRA=TRUE;;
 		--debug) DEBUG=TRUE;;
 	esac
 shift
@@ -366,7 +369,7 @@ then
 	fi
 fi
 
-### DRIVERS FOR ORACLE ( ONLY WITH KEY --oracle )
+### DRIVERS FOR ORACLE ( ONLY WITH KEY --with-oracle )
 php -m | grep -E "^oci8" 
 if (( $? >= 1 ))
 then
@@ -382,7 +385,7 @@ then
 		if (( $? == 0 ))
 		then
 			echo -e  "${GN}Drivers found.\n${NC}" >&5
-	        	apt-get install -y libaio1
+	        	apt install -y libaio1
 			echo "/opt/oracle/instantclient_18_3" > /etc/ld.so.conf.d/oracle-instantclient.conf
 	        	ldconfig
 	        	printf "instantclient,/opt/oracle/instantclient_18_3\n" | pecl install oci8
@@ -401,6 +404,115 @@ then
 		else
 			echo -e  "${RD}Drivers not found. Skipping...\n${NC}" >&5
 		fi
+		unset DRIVERS_PATH
+	fi
+fi
+
+### DRIVERS FOR IBM DB2 PDO ( ONLY WITH KEY --with-db2 )
+php -m | grep -E "^pdo_ibm"
+if (( $? >= 1 ))
+then
+	if [[ $DB2 == TRUE ]]
+	then
+		echo -e "${MG}Enter path to the IBM DB2 drivers: [./]${NC} " >&5
+                read DRIVERS_PATH
+                if [[ -z $DRIVERS_PATH ]]
+                then
+                        DRIVERS_PATH="."
+                fi
+		tar xzf $DRIVERS_PATH/ibm_data_server_driver_package_linuxx64_v11.1.tar.gz -C /opt/
+		if (( $? == 0 ))
+		then
+			echo -e  "${GN}Drivers found.\n${NC}" >&5
+			apt install -y ksh
+			chmod +x /opt/dsdriver/installDSDriver
+			/usr/bin/ksh /opt/dsdriver/installDSDriver
+			ln -s /opt/dsdriver/include /include
+			git clone https://github.com/dreamfactorysoftware/PDO_IBM-1.3.4-patched.git /opt/PDO_IBM-1.3.4-patched
+			cd /opt/PDO_IBM-1.3.4-patched/
+			phpize
+			./configure --with-pdo-ibm=/opt/dsdriver/lib
+			make && make install
+			if (( $? >= 1 ))
+                        then
+				echo -e  "${RD}\nCould not make pdo_ibm extension.${NC}" >&5
+				exit 1
+                        fi
+			echo "extension=pdo_ibm.so" > /etc/php/${PHP_VERSION_INDEX}/mods-available/pdo_ibm.ini
+			phpenmod -s ALL pdo_ibm
+                        php -m | grep pdo_ibm
+                        if (( $? >= 1 ))
+                        then
+                                echo -e  "${RD}\nCould not install pdo_ibm extension.${NC}" >&5
+                        fi
+                else
+                        echo -e  "${RD}Drivers not found. Skipping...\n${NC}" >&5
+                fi
+                unset DRIVERS_PATH
+		cd $CURRENT_PATH
+		rm -rf /opt/PDO_IBM-1.3.4-patched
+	fi
+fi
+
+### DRIVERS FOR IBM DB2 ( ONLY WITH KEY --with-db2 )
+php -m | grep -E "^ibm_db2"
+if (( $? >= 1 ))
+then
+	if [[ $DB2 == TRUE ]]
+	then
+		printf "/opt/dsdriver/ \n" | pecl install ibm_db2
+		if (( $? >= 1 ))
+        	then
+                	echo -e  "${RD}\nibm_db2 extension installation error.${NC}" >&5
+                	exit 1
+        	fi
+		echo "extension=ibm_db2.so" > /etc/php/${PHP_VERSION_INDEX}/mods-available/ibm_db2.ini
+		phpenmod -s ALL ibm_db2
+		php -m | grep ibm_db2
+                if (( $? >= 1 ))
+                then
+                	echo -e  "${RD}\nCould not install ibm_db2 extension.${NC}" >&5
+                fi
+	fi
+fi
+
+### DRIVERS FOR CASSANDRA ( ONLY WITH KEY --with-cassandra )
+php -m | grep -E "^cassandra"
+if (( $? >= 1 ))
+then
+        if [[ $CASSANDRA == TRUE ]]
+	then
+		apt install -y cmake libgmp-dev
+		git clone https://github.com/datastax/php-driver.git /opt/cassandra
+		cd /opt/cassandra/
+		wget http://downloads.datastax.com/cpp-driver/ubuntu/18.04/cassandra/v2.10.0/cassandra-cpp-driver-dbg_2.10.0-1_amd64.deb
+		wget http://downloads.datastax.com/cpp-driver/ubuntu/18.04/cassandra/v2.10.0/cassandra-cpp-driver-dev_2.10.0-1_amd64.deb
+		wget http://downloads.datastax.com/cpp-driver/ubuntu/18.04/cassandra/v2.10.0/cassandra-cpp-driver_2.10.0-1_amd64.deb
+		wget http://downloads.datastax.com/cpp-driver/ubuntu/18.04/dependencies/libuv/v1.23.0/libuv1-dbg_1.23.0-1_amd64.deb
+		wget http://downloads.datastax.com/cpp-driver/ubuntu/18.04/dependencies/libuv/v1.23.0/libuv1-dev_1.23.0-1_amd64.deb
+		wget http://downloads.datastax.com/cpp-driver/ubuntu/18.04/dependencies/libuv/v1.23.0/libuv1_1.23.0-1_amd64.deb
+		dpkg -i *.deb
+               	if (( $? >= 1 ))
+                then
+                        echo -e  "${RD}\ncassandra extension installation error.${NC}" >&5
+                        exit 1
+                fi
+		sed -i "s/7.1.99/7.2.99/" ./ext/package.xml
+		pecl install ./ext/package.xml
+		if (( $? >= 1 ))
+		then
+                        echo -e  "${RD}\ncassandra extension installation error.${NC}" >&5
+                        exit 1
+                fi
+		echo "extension=cassandra.so" > /etc/php/${PHP_VERSION_INDEX}/mods-available/cassandra.ini
+		phpenmod -s ALL cassandra
+		php -m | grep cassandra
+		if (( $? >= 1 ))
+		then
+                        echo -e  "${RD}\nCould not install ibm_db2 extension.${NC}" >&5
+                fi
+		cd $CURRENT_PATH
+		rm -rf /opt/cassandra
 	fi
 fi
 
@@ -665,6 +777,7 @@ then
 			cp $LICENSE_PATH/composer.{json,lock,json-dist} /opt/dreamfactory/
 			LICENSE_INSTALLED=TRUE
 			echo -e "\n${GN}Licenses file installed. ${NC}\n" >&5
+			echo -e  "${RD}Installing DreamFactory...\n${NC}" >&5
 		fi
 	else
 		echo -e  "\n${RD}Skipping...\n${NC}" >&5
@@ -688,11 +801,13 @@ else
                 if (( $? >= 1 ))
                 then
                         echo -e  "${RD}\nLicenses not found. Skipping.\n${NC}" >&5
+			echo -e  "${RD}Installing DreamFactory OSS version...\n${NC}" >&5
                 else
                         cp $LICENSE_PATH/composer.{json,lock,json-dist} /opt/dreamfactory/
                         LICENSE_INSTALLED=TRUE
                         echo -e "\n${GN}Licenses file installed. ${NC}\n" >&5
-                fi
+                	echo -e  "${RD}Installing DreamFactory...\n${NC}" >&5
+		fi
         else
                 echo -e  "\n${RD}Installing DreamFactory OSS version.\n${NC}" >&5
         fi

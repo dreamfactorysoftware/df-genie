@@ -46,6 +46,25 @@ You should not unzip these files. Just upload them to your server and write down
 
 The script only supports the latest version of Oracle drivers (18.3.0).
 
+### Enabling IBM DB2
+
+Passing the ```--with-db2``` option will result in installation of PHP's IBM DB2 (ibm_db2/pdo_ibm) extension.
+Due to licensing restrictions we are unable to include these files with the installer, however you can download these files from [here](https://www-01.ibm.com/marketing/iwm/iwm/web/preLogin.do?source=swg-idsdpds). This download requires you to register for a free account with IBM. You can pass the option like this:
+
+    $ sudo ./DreamFactory_Ubuntu.sh --with-db2
+
+After navigating to the IBM website you'll want to download the "IBM Data Server Driver Package (Linux AMD64 and Intel EM64T)" file:
+
+* ibm_data_server_driver_package_linuxx64_v11.1.tar.gz
+
+You should not unzip these files. Just upload them to your server and write down the absolute path to their location as you'll need to supply this path during the installation process.
+
+### Enabling Cassandra 
+
+Passing the ```--with-cassandra``` option will result in installation of PHP's Cassandra extension. You can pass the option like this:
+
+    $ sudo ./DreamFactory_Ubuntu.sh --with-cassandra
+
 ### Installing Apache
 
 Passing the ```--with-apache``` option will result in the Apache 2 web server being installed instead of the default Nginx web server. You can pass the option like this:
@@ -56,7 +75,7 @@ Passing the ```--with-apache``` option will result in the Apache 2 web server be
 
 You can supply multiple options to the installer like so:
 
-    $ sudo ./DreamFactory_Ubuntu.sh --with-apache --with-oracle --with-mysql
+    $ sudo ./DreamFactory_Ubuntu.sh --with-apache --with-oracle --with-mysql --with-cassandra --with-db2
 
 
 ### Accessing Your DreamFactory Installation

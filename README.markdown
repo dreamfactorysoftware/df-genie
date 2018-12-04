@@ -8,7 +8,7 @@ For this wizard to work properly several conditions must be met:
 
 * The wizard will be run on a fresh Ubuntu installation. If you have existing resources installed on the server the script will skip some installation steps and you may need to manually perform additional configuration steps.
 * DreamFactory will be the only web app running on this server. If you intend to run other sites using virtual hosts you will need to adjust the configuration to suit this requirement.
-* If the server has already installed PHP version 7.1, the script will install all extensions for DreamFactory compatible with that version PHP. Otherwise PHP 7.2 will be installed. DreamFactory no longer supports PHP 7.0.
+* If the server has already installed PHP version 7.1, the script will install all extensions for DreamFactory compatible with that version PHP. Otherwise PHP 7.2 will be installed. DreamFactory 2.13.+ no longer supports PHP 7.0.
 * The executing user must be able to use sudo to run the installer.
 * You'll need to make the script executable by changing its permissions (`sudo chmod +x DreamFactory_Ubuntu.sh`)
 

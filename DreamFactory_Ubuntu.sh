@@ -70,7 +70,7 @@ apt-get install -y git \
 	software-properties-common \
 	lsof \
 	libmcrypt-dev \
-	libreadline-dev
+	libreadline-dev 
 
 # Check installation status
 if (( $? >= 1 ))
@@ -106,7 +106,7 @@ PHP_VERSION_INDEX=$(echo $PHP_VERSION | cut -c 4-6)
 add-apt-repository ppa:ondrej/php -y
 
 # Update the system
-apt-get update  > /dev/null
+apt-get update 
 
 apt-get install -y ${PHP_VERSION}-common \
 	${PHP_VERSION}-xml \
@@ -121,7 +121,10 @@ apt-get install -y ${PHP_VERSION}-common \
 	${PHP_VERSION}-bcmath \
 	${PHP_VERSION}-dev \
 	${PHP_VERSION}-ldap \
-	${PHP_VERSION}-pgsql
+	${PHP_VERSION}-pgsql \
+	${PHP_VERSION}-interbase \
+	${PHP_VERSION}-sybase 
+
 
 if (( $? >= 1 ))
 then
@@ -516,6 +519,91 @@ then
 	fi
 fi
 
+
+### INSTALL IGBINARY EXT.
+php -m | grep -E "^igbinary"
+if (( $? >= 1 ))
+then
+	pecl install igbinary
+	if (( $? >= 1 ))
+	then
+	        echo -e  "${RD}\nigbinary extension installation error.${NC}" >&5
+                exit 1
+        fi
+
+	echo "extension=igbinary.so" > /etc/php/${PHP_VERSION_INDEX}/mods-available/igbinary.ini
+	phpenmod -s ALL igbinary
+        php -m | grep igbinary
+	if (( $? >= 1 ))
+        then
+	        echo -e  "${RD}\nCould not install ibm_db2 extension.${NC}" >&5
+        fi
+fi
+
+### INSTALL PYTHON BUNCH
+apt install -y python python-pip
+pip list | grep bunch
+if (( $? >= 1 ))
+then
+	pip install bunch
+        if (( $? >= 1 ))
+        then
+                echo -e  "${RD}\nCould not install python bunch extension.${NC}" >&5
+        fi
+fi
+
+### INSTALL PCS
+php -m | grep -E "^pcs"
+if (( $? >= 1 ))
+then
+        pecl install pcs-1.3.3
+        if (( $? >= 1 ))
+        then
+                echo -e  "${RD}\npcs extension installation error..${NC}" >&5
+                exit 1
+        fi
+        echo "extension=pcs.so" > /etc/php/${PHP_VERSION_INDEX}/mods-available/pcs.ini
+        phpenmod -s ALL pcs
+        php -m | grep pcs
+        if (( $? >= 1 ))
+        then
+                echo -e  "${RD}\nCould not install pcs extension.${NC}" >&5
+        fi
+fi
+
+### INSTALL COUCHBASE
+php -m | grep -E "^couchbase"
+if (( $? >= 1 ))
+then
+	if (( $CURRENT_OS == 16 ))
+       	then
+		wget -P /tmp http://packages.couchbase.com/releases/couchbase-release/couchbase-release-1.0-4-amd64.deb 
+		dpkg -i /tmp/couchbase-release-1.0-4-amd64.deb
+
+        elif (( $CURRENT_OS == 18 ))
+	then
+		wget -O - http://packages.couchbase.com/ubuntu/couchbase.key | apt-key add -
+		echo "deb http://packages.couchbase.com/ubuntu bionic bionic/main" > /etc/apt/sources.list.d/couchbase.list
+	fi
+
+	apt-get update 
+	apt install -y libcouchbase-dev build-essential zlib1g-dev
+	pecl install couchbase
+	if (( $? >= 1 ))
+        then
+                echo -e  "${RD}\ncouchbase extension installation error.${NC}" >&5
+        	exit 1
+	fi
+	echo "extension=couchbase.so" > /etc/php/${PHP_VERSION_INDEX}/mods-available/xcouchbase.ini
+        phpenmod -s ALL xcouchbase
+        php -m | grep couchbase
+	if (( $? >= 1 ))
+        then
+        	echo -e  "${RD}\nCould not install couchbase extension.${NC}" >&5
+        fi
+
+fi
+
 if [[ $APACHE == TRUE ]]
 then
 	service apache2 reload
@@ -806,7 +894,7 @@ else
                         cp $LICENSE_PATH/composer.{json,lock,json-dist} /opt/dreamfactory/
                         LICENSE_INSTALLED=TRUE
                         echo -e "\n${GN}Licenses file installed. ${NC}\n" >&5
-                	echo -e  "${RD}Installing DreamFactory...\n${NC}" >&5
+                	echo -e  "${GN}Installing DreamFactory...\n${NC}" >&5
 		fi
         else
                 echo -e  "\n${RD}Installing DreamFactory OSS version.\n${NC}" >&5

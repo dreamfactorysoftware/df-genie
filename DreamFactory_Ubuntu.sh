@@ -742,7 +742,7 @@ then
 					TRYS=$((TRYS + 1))
 					if (( $TRYS == 3 ))
 					then
-						echo -e "\n${RD}Exitr.\n${NC}" >&5
+						echo -e "\n${RD}Exit.\n${NC}" >&5
 						exit 1	
 					fi
 	                	done
@@ -763,19 +763,23 @@ then
 	                echo -e "${RD}Connection to Database failed. Exit \n${NC}" >&5
 	                exit 1
 	        fi
-		echo -e "${MG}What would you like to name your system database? (e.g. dreamfactory) ${NC}" >&5
+		echo -e "\n${MG}What would you like to name your system database? (e.g. dreamfactory) ${NC}" >&5
 		read DF_SYSTEM_DB
 		if [[ -z $DF_SYSTEM_DB ]]
                 then
 			until [[ ! -z $DF_SYSTEM_DB ]]
 			do
-				echo -e "${RD}The name can't be empty!${NC}" >&5
+				echo -e "\n${RD}The name can't be empty!${NC}" >&5
 				read DF_SYSTEM_DB
 			done
                 fi
 
-	        echo "CREATE DATABASE ${DF_SYSTEM_DB};" | mysql -u root -p${DB_PASS}
-	
+	        echo "CREATE DATABASE ${DF_SYSTEM_DB};" | mysql -u root -p${DB_PASS} 2>&5
+		if (( $? >= 1 ))
+		then
+			echo -e "\n${RD}Creating database error. Exit${NC}" >&5
+                        exit 1
+		fi	
 		echo -e "\n${MG}Please create a MySQL DreamFactory system database user name (e.g. dfadmin): ${NC}" >&5
 		read DF_SYSTEM_DB_USER
 		if [[ -z $DF_SYSTEM_DB_USER ]]
@@ -799,7 +803,13 @@ then
                         done
                 fi	
 	        # Generate password for user in DB
-	        echo "GRANT ALL PRIVILEGES ON ${DF_SYSTEM_DB}.* to \"${DF_SYSTEM_DB_USER}\"@\"localhost\" IDENTIFIED BY \"${DF_SYSTEM_DB_PASSWORD}\";" | mysql -u root -p${DB_PASS} 
+	        echo "GRANT ALL PRIVILEGES ON ${DF_SYSTEM_DB}.* to \"${DF_SYSTEM_DB_USER}\"@\"localhost\" IDENTIFIED BY \"${DF_SYSTEM_DB_PASSWORD}\";" | mysql -u root -p${DB_PASS} 2>&5 
+		if (( $? >= 1 ))
+                then
+                        echo -e "\n${RD}Creating new user error. Exit${NC}" >&5
+                        exit 1
+                fi
+
 		echo "FLUSH PRIVILEGES;" | mysql -u root -p${DB_PASS} 
 	
 	        echo -e "\n${GN}Database configuration finished.\n${NC}" >&5

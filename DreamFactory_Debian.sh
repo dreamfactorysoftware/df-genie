@@ -629,7 +629,7 @@ echo -e "${GN}Composer installed.\n${NC}" >&5
 ### Step 6. Installing MySQL
 if [[ $MYSQL == TRUE ]] ### Only with key --with-mysql
 then
-	echo -e "${GN}Step 6: Installing Database for DreamFactory...\n${NC}" >&5
+	echo -e "${GN}Step 6: Installing System Database for DreamFactory...\n${NC}" >&5
 
 	dpkg -l | grep mysql | cut -d " " -f 3 | grep -E "^mysql" | grep -E -v "^mysql-client" 
 	CHECK_MYSQL_INSTALLATION=$(echo $?)

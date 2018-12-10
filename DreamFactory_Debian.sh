@@ -60,7 +60,7 @@ fi
 
 ### STEP 1. Install system dependencies
 echo -e "${GN}Step 1: Installing system dependencies...\n${NC}" >&5
-apt-get update 
+apt-get update
 apt-get install -y git \
 	curl \
 	zip \
@@ -131,16 +131,16 @@ then
 	ps aux | grep -v grep | grep apache2
 	CHECK_APACHE_PROCESS=$(echo $?)
 
-	dpkg -l | grep apache2 | cut -d " " -f 3 | grep -E "apache2$" 
+	dpkg -l | grep apache2 | cut -d " " -f 3 | grep -E "apache2$"
 	CHECK_APACHE_INSTALLATION=$(echo $?)
-	
+
 	if (( $CHECK_APACHE_PROCESS == 0 )) || (( $CHECK_APACHE_INSTALLATION == 0 ))
 	then
 	        echo -e  "${RD}Apache2 detected. Skipping installation. Configure Apache2 manually.\n${NC}" >&5
-	else 
+	else
 		# Install Apache
 	        # Check if running web server on port 80
-		lsof -i :80 | grep LISTEN 
+		lsof -i :80 | grep LISTEN
 	        if (( $? == 0 ))
 	        then
 	                echo -e  "${RD}Port 80 taken.\n ${NC}" >&5
@@ -175,30 +175,30 @@ then
 	                echo '</LimitExcept>' >> $WEB_PATH
 	                echo '</Directory>' >> $WEB_PATH
 	                echo '</VirtualHost>' >> $WEB_PATH
-	
+
 	                service apache2 restart
-	
+
 	                echo -e "${GN}Apache2 installed.\n${NC}" >&5
 	        fi
 	fi
 
 else
-	echo -e "${GN}Step 3: Installing Nginx...\n${NC}" >&5 ### Default choice 
+	echo -e "${GN}Step 3: Installing Nginx...\n${NC}" >&5 ### Default choice
 
 	# Check nginx installation in the system
 	ps aux | grep -v grep | grep nginx
 	CHECK_NGINX_PROCESS=$(echo $?)
-	
-	dpkg -l | grep nginx | cut -d " " -f 3 | grep -E "nginx$" 
+
+	dpkg -l | grep nginx | cut -d " " -f 3 | grep -E "nginx$"
 	CHECK_NGINX_INSTALLATION=$(echo $?)
-	
+
 	if (( $CHECK_NGINX_PROCESS == 0 )) || (( $CHECK_NGINX_INSTALLATION == 0 ))
 	then
 		echo -e  "${RD}Nginx detected. Skipping installation. Configure Nginx manually.\n${NC}" >&5
 	else
 	        # Install nginx
 	        # Checking running web server
-	        lsof -i :80 | grep LISTEN 
+	        lsof -i :80 | grep LISTEN
 	        if (( $? == 0 ))
 	        then
 	               	echo -e  "${RD}Port 80 taken.\n ${NC}" >&5
@@ -211,8 +211,8 @@ else
 	                	exit 1
 	        	fi
 	        	# Change php fpm configuration file
-	        	sed -i 's/\;cgi\.fix\_pathinfo\=1/cgi\.fix\_pathinfo\=0/' $(php -i|sed -n '/^Loaded Configuration File => /{s:^.*> ::;p;}'| sed 's/cli/fpm/')	
-	        
+	        	sed -i 's/\;cgi\.fix\_pathinfo\=1/cgi\.fix\_pathinfo\=0/' $(php -i|sed -n '/^Loaded Configuration File => /{s:^.*> ::;p;}'| sed 's/cli/fpm/')
+
 	        	# Create nginx site entry
 	        	WEB_PATH=/etc/nginx/sites-available/default
 	                echo 'server {' > $WEB_PATH
@@ -242,10 +242,10 @@ else
 	                echo 'fastcgi_index index.php;' >> $WEB_PATH
 	                echo 'fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;' >> $WEB_PATH
 	                echo 'include fastcgi_params;}}' >> $WEB_PATH
-	        	
-	        
+
+
 	        	service ${PHP_VERSION}-fpm restart && service nginx restart
-	        
+
 	        	echo -e "${GN}Nginx installed.\n${NC}" >&5
 	        fi
 	fi
@@ -276,7 +276,7 @@ then
 	fi
 	echo "extension=mcrypt.so" > /etc/php/${PHP_VERSION_INDEX}/mods-available/mcrypt.ini
 	phpenmod -s ALL mcrypt
-	php -m | grep -E "^mcrypt" 
+	php -m | grep -E "^mcrypt"
 	if (( $? >= 1 ))
 	then
 	        echo -e  "${RD}\nMcrypt installation error.${NC}" >&5
@@ -313,13 +313,13 @@ then
 	elif (( $CURRENT_OS == 9 ))
 	then
 		curl https://packages.microsoft.com/config/debian/9/prod.list > /etc/apt/sources.list.d/mssql-release.list
-	else	
+	else
 		echo -e "${RD}The script support only Debian 8 and 9 versions. Exit.\n ${NC}">&5
 		exit 1
 	fi
-	apt-get update  
+	apt-get update
 	ACCEPT_EULA=Y apt-get install -y msodbcsql17 mssql-tools unixodbc-dev
-	
+
 	pecl install sqlsrv
 	if (( $? >= 1 ))
 	then
@@ -328,12 +328,12 @@ then
 	fi
 	echo "extension=sqlsrv.so" > /etc/php/${PHP_VERSION_INDEX}/mods-available/sqlsrv.ini
 	phpenmod -s ALL sqlsrv
-	php -m | grep -E  "^sqlsrv" 
+	php -m | grep -E  "^sqlsrv"
 	if (( $? >= 1 ))
 	then
 	        echo -e  "${RD}\nMS SQL Server extension installation error.${NC}" >&5
 	fi
-fi	
+fi
 
 ### DRIVERS FOR MSSQL (pdo_sqlsrv)
 php -m | grep -E "^pdo_sqlsrv"
@@ -355,13 +355,13 @@ then
 fi
 
 ### DRIVERS FOR ORACLE ( ONLY WITH KEY --oracle )
-php -m | grep -E "^oci8" 
+php -m | grep -E "^oci8"
 if (( $? >= 1 ))
 then
 	if [[ $ORACLE == TRUE ]]
 	then
 		echo -e "${MG}Enter path to the Oracle drivers: [./]${NC} " >&5
-        	read DRIVERS_PATH 
+        	read DRIVERS_PATH
         	if [[ -z $DRIVERS_PATH ]]
         	then
                 	DRIVERS_PATH="."
@@ -381,8 +381,8 @@ then
 			fi
 			echo "extension=oci8.so" > /etc/php/${PHP_VERSION_INDEX}/mods-available/oci8.ini
 	        	phpenmod -s ALL oci8
-			
-			php -m | grep oci8 
+
+			php -m | grep oci8
 			if (( $? >= 1 ))
 	        	then
 	        	        echo -e  "${RD}\nCould not install oci8 extension.${NC}" >&5
@@ -395,7 +395,7 @@ fi
 
 ### DRIVERS FOR IBM DB2 PDO ( ONLY WITH KEY --with-db2 )
 php -m | grep -E "^pdo_ibm"
-if (( $? >= 1 )) 
+if (( $? >= 1 ))
 then
         if [[ $DB2 == TRUE ]]
         then
@@ -406,7 +406,7 @@ then
                         DRIVERS_PATH="."
                 fi
                 tar xzf $DRIVERS_PATH/ibm_data_server_driver_package_linuxx64_v11.1.tar.gz -C /opt/
-                if (( $? == 0 )) 
+                if (( $? == 0 ))
                 then
                         echo -e  "${GN}Drivers found.\n${NC}" >&5
                         apt install -y ksh
@@ -418,17 +418,36 @@ then
                         phpize
                         ./configure --with-pdo-ibm=/opt/dsdriver/lib
                         make && make install
-                        if (( $? >= 1 )) 
-                        then
+                if (( $? >= 1 ))
+                then
                                 echo -e  "${RD}\nCould not make pdo_ibm extension.${NC}" >&5
                                 exit 1
                         fi
                         echo "extension=pdo_ibm.so" > /etc/php/${PHP_VERSION_INDEX}/mods-available/pdo_ibm.ini
                         phpenmod -s ALL pdo_ibm
                         php -m | grep pdo_ibm
-                        if (( $? >= 1 )) 
+                        if (( $? >= 1 ))
                         then
                                 echo -e  "${RD}\nCould not install pdo_ibm extension.${NC}" >&5
+												else
+																### DRIVERS FOR IBM DB2 ( ONLY WITH KEY --with-db2 )
+																php -m | grep -E "^ibm_db2"
+																if (( $? >= 1 ))
+																then
+																				printf "/opt/dsdriver/ \n" | pecl install ibm_db2
+																				if (( $? >= 1 ))
+																				then
+																								echo -e  "${RD}\nibm_db2 extension installation error.${NC}" >&5
+																								exit 1
+																				fi
+																				echo "extension=ibm_db2.so" > /etc/php/${PHP_VERSION_INDEX}/mods-available/ibm_db2.ini
+																				phpenmod -s ALL ibm_db2
+																				php -m | grep ibm_db2
+																				if (( $? >= 1 ))
+																				then
+																								echo -e  "${RD}\nCould not install ibm_db2 extension.${NC}" >&5
+																				fi
+																fi
                         fi
                 else
                         echo -e  "${RD}Drivers not found. Skipping...\n${NC}" >&5
@@ -436,28 +455,6 @@ then
                 unset DRIVERS_PATH
                 cd $CURRENT_PATH
                 rm -rf /opt/PDO_IBM-1.3.4-patched
-        fi
-fi
-
-### DRIVERS FOR IBM DB2 ( ONLY WITH KEY --with-db2 )
-php -m | grep -E "^ibm_db2"
-if (( $? >= 1 ))
-then
-        if [[ $DB2 == TRUE ]]
-        then
-                printf "/opt/dsdriver/ \n" | pecl install ibm_db2
-                if (( $? >= 1 ))
-                then
-                        echo -e  "${RD}\nibm_db2 extension installation error.${NC}" >&5
-                        exit 1
-                fi
-                echo "extension=ibm_db2.so" > /etc/php/${PHP_VERSION_INDEX}/mods-available/ibm_db2.ini
-                phpenmod -s ALL ibm_db2
-                php -m | grep ibm_db2
-                if (( $? >= 1 ))
-                then
-                        echo -e  "${RD}\nCould not install ibm_db2 extension.${NC}" >&5
-                fi
         fi
 fi
 
@@ -631,15 +628,15 @@ if [[ $MYSQL == TRUE ]] ### Only with key --with-mysql
 then
 	echo -e "${GN}Step 6: Installing System Database for DreamFactory...\n${NC}" >&5
 
-	dpkg -l | grep mysql | cut -d " " -f 3 | grep -E "^mysql" | grep -E -v "^mysql-client" 
+	dpkg -l | grep mysql | cut -d " " -f 3 | grep -E "^mysql" | grep -E -v "^mysql-client"
 	CHECK_MYSQL_INSTALLATION=$(echo $?)
-	
+
 	ps aux | grep -v grep | grep -E "^mysql"
 	CHECK_MYSQL_PROCESS=$(echo $?)
-	
+
 	lsof -i :3306 | grep LISTEN
 	CHECK_MYSQL_PORT=$(echo $?)
-	
+
 	if (( $CHECK_MYSQL_PROCESS == 0 )) || (( $CHECK_MYSQL_INSTALLATION == 0 )) || (( $CHECK_MYSQL_PORT == 0 ))
 	then
 		echo -e  "${RD}MySQL Database detected in the system. Skipping installation. \n${NC}" >&5
@@ -659,9 +656,9 @@ then
 			echo -e "${RD}The script support only Debian 8 and 9 versions. Exit.\n${NC}" >&5
 			exit 1
 	        fi
-	       
+
 		apt-get update
-	       
+
 		echo -e  "${MG}Please choose a strong MySQL root user password: ${NC}" >&5
         	read DB_PASS
 		if [[ -z $DB_PASS ]]
@@ -677,16 +674,16 @@ then
 	        # Disable interactive mode in installation mariadb. Set generated above password.
 		export DEBIAN_FRONTEND="noninteractive"
 		debconf-set-selections <<< "mariadb-server mysql-server/root_password password $DB_PASS"
-		debconf-set-selections <<< "mariadb-server mysql-server/root_password_again password $DB_PASS" 
+		debconf-set-selections <<< "mariadb-server mysql-server/root_password_again password $DB_PASS"
 
 		apt-get install -y mariadb-server
-	        
+
 	        if (( $? >= 1 ))
 	        then
 	                echo -e  "${RD}\n${ERROR_STRING}${NC}" >&5
 	                exit 1
 	        fi
-	
+
 		service mariadb start
 		if (( $? >= 1 ))
         	then
@@ -694,16 +691,16 @@ then
                 	exit 1
         	fi
 	fi
-	
+
 	echo -e "${GN}Database for DreamFactory installed.\n${NC}" >&5
 
 	### Step 7. Configuring DreamFactory system database
 	echo -e "${GN}Step 7: Configure DreamFactory system database.\n${NC}" >&5
-	
+
 	DB_INSTALLED=FALSE
 
 	# The MySQL database has already been installed, so let's configure
-	# the DreamFactory system database.	
+	# the DreamFactory system database.
 	if [[ $DB_FOUND == TRUE ]]
 	then
 	        echo -e "${MG}Is DreamFactory MySQL system database already configured? [Yy/Nn] ${NC}" >&5
@@ -721,9 +718,9 @@ then
 		else
 			echo -e "\n${MG}Enter MySQL root password: ${NC} " >&5
 	        	read DB_PASS
-	
+
 	        	# Test DB access
-	        	mysql -h localhost -u root -p$DB_PASS -e"quit" 
+	        	mysql -h localhost -u root -p$DB_PASS -e"quit"
 	        	if (( $? >= 1 ))
 	        	then
 	                	ACCESS=FALSE
@@ -733,7 +730,7 @@ then
 	                        	echo -e "${RD}\nPassword incorrect!\n ${NC}" >&5
 	                        	echo -e "${MG}Enter root user password:\n ${NC}" >&5
 	                        	read DB_PASS
-	                        	mysql -h localhost -u root -p$DB_PASS -e"quit" 
+	                        	mysql -h localhost -u root -p$DB_PASS -e"quit"
 	                        	if (( $? == 0 ))
 	                        		then
 	                                	ACCESS=TRUE
@@ -741,12 +738,12 @@ then
 					TRYS=$((TRYS + 1))
 					if (( $TRYS == 3 ))
 					then
-						echo -e "\n${RD}Exitr.\n${NC}" >&5
-						exit 1	
+						echo -e "\n${RD}Exit.\n${NC}" >&5
+						exit 1
 					fi
 	                	done
 	        	fi
-	
+
 		fi
 	fi
 
@@ -754,7 +751,7 @@ then
 	# let's install it.
 	if [[ $DB_INSTALLED == FALSE ]]
 	then
-	
+
 	        # Test DB access
 	        mysql -h localhost -u root -p$DB_PASS -e"quit"
 	        if (( $? >= 1 ))
@@ -800,7 +797,7 @@ then
                                 echo -e "${RD}The name can't be empty!${NC}" >&5
                                 read DF_SYSTEM_DB_PASSWORD
                         done
-                fi	
+                fi
 	        # Generate password for user in DB
 	        echo "GRANT ALL PRIVILEGES ON ${DF_SYSTEM_DB}.* to \"${DF_SYSTEM_DB_USER}\"@\"localhost\" IDENTIFIED BY \"${DF_SYSTEM_DB_PASSWORD}\";" | mysql -u root -p${DB_PASS} 2>&5
                 if (( $? >= 1 ))
@@ -809,8 +806,8 @@ then
                         exit 1
                 fi
 
-		echo "FLUSH PRIVILEGES;" | mysql -u root -p${DB_PASS} 
-	
+		echo "FLUSH PRIVILEGES;" | mysql -u root -p${DB_PASS}
+
 	        echo -e "\n${GN}Database configuration finished.\n${NC}" >&5
 	else
 	        echo -e "${GN}Skipping...\n${NC}" >&5
@@ -820,7 +817,7 @@ else
 	echo -e "Step 7: Skipping DreamFactory system database configuration.\n${NC}" >&5
 fi
 
-### Step 8. Install DreamFactory		
+### Step 8. Install DreamFactory
 echo -e "${GN}Step 8: Installing DreamFactory...\n ${NC}" >&5
 
 ls -d /opt/dreamfactory
@@ -941,13 +938,13 @@ then
 
 elif [[ ! $MYSQL == TRUE && $DF_CLEAN_INSTALLATION == TRUE ]]
 then
-	su $CURRENT_USER -c "php artisan df:env" 
+	su $CURRENT_USER -c "php artisan df:env"
 fi
 
 if [[ $DF_CLEAN_INSTALLATION == TRUE ]]
 then
-	su $CURRENT_USER -c "php artisan df:setup" 
-fi 
+	su $CURRENT_USER -c "php artisan df:setup"
+fi
 
 if [[  $LICENSE_INSTALLED == TRUE || $DF_CLEAN_INSTALLATION == FALSE ]]
 then
@@ -959,7 +956,7 @@ then
                 grep DF_LICENSE_KEY .env > /dev/null 2>&1 # Check for existing key.
                 if (( $? == 0 ))
                 then
-                        echo -e "\n${RD}The license key already installed. Are you want to install a new key? [Yy/Nn]${NC}" 
+                        echo -e "\n${RD}The license key already installed. Are you want to install a new key? [Yy/Nn]${NC}"
                         read KEY_ANSWER
                         if [[ -z $KEY_ANSWER ]]
                         then
@@ -1031,11 +1028,8 @@ then
 	fi
 	echo -e " DB name: $(echo $DF_SYSTEM_DB) "
 	echo -e " DB user: $(echo $DF_SYSTEM_DB_USER)"
-	echo -e " DB password: $(echo $DF_SYSTEM_DB_PASSWORD)"  
+	echo -e " DB password: $(echo $DF_SYSTEM_DB_PASSWORD)"
 	echo -e "******************************${NC}\n"
 fi
 
 exit 0
-
-
-

@@ -186,9 +186,8 @@ then
 	                echo '</VirtualHost>' >> $WEB_PATH
 
 	                service httpd restart
-									systemctl enable httpd.service
-
-									firewall-cmd --add-service=http
+			systemctl enable httpd.service
+			firewall-cmd --add-service=http
 
 	                echo -e "${GN}Apache2 installed.\n${NC}" >&5
 	        fi
@@ -459,13 +458,13 @@ then
                         ln -s /opt/dsdriver/include /include
                         git clone https://github.com/dreamfactorysoftware/PDO_IBM-1.3.4-patched.git /opt/PDO_IBM-1.3.4-patched
                         cd /opt/PDO_IBM-1.3.4-patched/
-												sed -i 's/option_str = Z_STRVAL_PP(data);//' ibm_driver.c
-												sed -i '985i\#if PHP_MAJOR_VERSION >= 7\' ibm_driver.c
-												sed -i '986i\option_str = Z_STRVAL_P(data);\' ibm_driver.c
-												sed -i '987i\#else\' ibm_driver.c
-												sed -i '988i\option_str = Z_STRVAL_PP(data);\' ibm_driver.c
-												sed -i '989i\#endif' ibm_driver.c
-												phpize
+			sed -i 's/option_str = Z_STRVAL_PP(data);//' ibm_driver.c
+			sed -i '985i\#if PHP_MAJOR_VERSION >= 7\' ibm_driver.c
+			sed -i '986i\option_str = Z_STRVAL_P(data);\' ibm_driver.c
+			sed -i '987i\#else\' ibm_driver.c
+			sed -i '988i\option_str = Z_STRVAL_PP(data);\' ibm_driver.c
+			sed -i '989i\#endif' ibm_driver.c
+			phpize
                         ./configure --with-pdo-ibm=/opt/dsdriver/lib
                         make && make install
                         if (( $? >= 1 ))
@@ -479,26 +478,24 @@ then
                         if (( $? >= 1 ))
                         then
                                 echo -e  "${RD}\nCould not install pdo_ibm extension.${NC}" >&5
-												else
-
-																php -m | grep -E "^ibm_db2"
-																if (( $? >= 1 ))
-																then
-																         printf "/opt/dsdriver/ \n" | pecl install ibm_db2
-																         if (( $? >= 1 ))
-																         then
-																                echo -e  "${RD}\nibm_db2 extension installation error.${NC}" >&5
-																                exit 1
-																        fi
-																        echo "extension=ibm_db2.so" > /etc/php.d/20-ibm_db2.ini
-
-																        php -m | grep ibm_db2
-																        if (( $? >= 1 ))
-																        then
-																        				echo -e  "${RD}\nCould not install ibm_db2 extension.${NC}" >&5
-																        fi
-																fi
-											  fi
+			else
+				php -m | grep -E "^ibm_db2"
+				if (( $? >= 1 ))
+				then
+				        printf "/opt/dsdriver/ \n" | pecl install ibm_db2
+				        if (( $? >= 1 ))
+				      	then
+				                echo -e  "${RD}\nibm_db2 extension installation error.${NC}" >&5
+				                exit 1
+				        fi
+					echo "extension=ibm_db2.so" > /etc/php.d/20-ibm_db2.ini
+				        php -m | grep ibm_db2
+				        if (( $? >= 1 ))
+				        then
+	        				echo -e  "${RD}\nCould not install ibm_db2 extension.${NC}" >&5
+				        fi
+				fi
+		  	fi
 
                 else
                         echo -e  "${RD}Drivers not found. Skipping...\n${NC}" >&5
@@ -609,29 +606,29 @@ fi
 php -m | grep -E "^couchbase"
 if (( $? >= 1 ))
 then
-				wget -P /tmp http://packages.couchbase.com/releases/couchbase-release/couchbase-release-1.0-4-x86_64.rpm
-				rpm -i /tmp/couchbase-release-1.0-4-x86_64.rpm
-				dnf install -y libcouchbase-devel
-				pecl install couchbase
-				if (( $? >= 1 ))
+	wget -P /tmp http://packages.couchbase.com/releases/couchbase-release/couchbase-release-1.0-4-x86_64.rpm
+	rpm -i /tmp/couchbase-release-1.0-4-x86_64.rpm
+	dnf install -y libcouchbase-devel
+	pecl install couchbase
+	if (( $? >= 1 ))
         then
                 echo -e  "${RD}\ncouchbase extension installation error.${NC}" >&5
-        				exit 1
-				fi
-				echo "extension=couchbase.so" > /etc/php.d/xcouchbase.ini
-
-  		php -m | grep couchbase
-			if (( $? >= 1 ))
-      then
-        				echo -e  "${RD}\nCould not install couchbase extension.${NC}" >&5
-  		fi
+        	exit 1
+	fi
+	echo "extension=couchbase.so" > /etc/php.d/xcouchbase.ini
+	
+	php -m | grep couchbase
+	if (( $? >= 1 ))
+      	then
+        	echo -e  "${RD}\nCould not install couchbase extension.${NC}" >&5
+  	fi
 fi
 
 
 if [[ $APACHE == TRUE ]]
 then
-        service apache2 restart
-				service php-fpm restart
+        service httpd restart
+	service php-fpm restart
 else
         service php-fpm restart
 fi

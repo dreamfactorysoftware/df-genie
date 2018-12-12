@@ -22,9 +22,27 @@ do
 		--with-db2) DB2=TRUE;;
 		--with-cassandra) CASSANDRA=TRUE;;
 		--debug) DEBUG=TRUE;;
+                --help) HELP=TRUE;;
+                -h) HELP=TRUE;;
+		*) echo -e "\n${RD}Invalid flag detected… aborting.${NC}"
+		   HELP=TRUE
+		   break;;
 	esac
 shift
 done
+
+if [[ $HELP == TRUE ]]
+then	
+	echo -e "\nList of available keys:\n"
+	echo "   --with-oracle                  Install driver and PHP extensions for work with Oracle DB"
+	echo "   --with-mysql                   Install MariaDB as default system database for DreamFactory"
+	echo "   --with-apache                  Install Apache2 web server for DreamFactory"
+	echo "   --with-db2                     Install driver and PHP extensions for work with IBM DB2"
+	echo "   --with-cassandra               Install driver and PHP extensions for work with Cassandra DB"
+	echo "   --debug                        Enable installation process logging to file in /tmp folder."
+	echo -e "   -h, --help                     Show this help\n"
+	exit 1
+fi
 
 if [[ ! $DEBUG == TRUE ]]
 then

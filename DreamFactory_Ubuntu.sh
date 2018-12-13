@@ -1038,8 +1038,8 @@ then
 	fi
 fi
 
-chmod -R 2775 storage/ bootstrap/cache/
-chown -R www-data:$CURRENT_USER storage/ bootstrap/cache/
+chmod -R 2775 /opt/dreamfactory/
+chown -R www-data:$CURRENT_USER /opt/dreamfactory/
 
 ### Uncomment nodejs in .env file
 grep -E "^#DF_NODEJS_PATH" .env > /dev/null

@@ -568,6 +568,20 @@ then
         fi
 fi
 
+### Install Node.js
+node -v 
+if (( $? >= 1 ))
+then
+	curl -sL https://deb.nodesource.com/setup_10.x | sudo bash -
+	apt-get install -y nodejs
+	if (( $? >= 1 ))
+	then
+        	echo -e  "${RD}\n${ERROR_STRING}${NC}" >&5
+        	exit 1
+	fi
+	NODE_PATH=$(whereis node | cut -d" " -f2)
+fi
+
 ### INSTALL PCS
 php -m | grep -E "^pcs"
 if (( $? >= 1 ))
@@ -1026,6 +1040,14 @@ fi
 
 chmod -R 2775 storage/ bootstrap/cache/
 chown -R www-data:$CURRENT_USER storage/ bootstrap/cache/
+
+### Uncomment nodejs in .env file
+grep -E "^#DF_NODEJS_PATH" .env > /dev/null
+if (( $? == 0 ))
+then
+	sed -i "s,\#DF_NODEJS_PATH=/usr/local/bin/node,DF_NODEJS_PATH=$NODE_PATH," .env
+fi
+
 sudo -u $CURRENT_USER bash -c "php artisan cache:clear -q"
 
 echo -e "\n${GN}Installation finished! ${NC}"

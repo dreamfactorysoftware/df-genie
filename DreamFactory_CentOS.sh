@@ -13,16 +13,34 @@ CURRENT_PATH=$(pwd)
 # CHECK FOR KEYS
 while [[ -n $1 ]]
 do
-        case "$1" in
-                --with-oracle) ORACLE=TRUE;;
-                --with-mysql) MYSQL=TRUE;;
-                --with-apache) APACHE=TRUE;;
-                --with-db2) DB2=TRUE;;
-                --with-cassandra) CASSANDRA=TRUE;;
-                --debug) DEBUG=TRUE;;
-        esac
+	case "$1" in
+        	--with-oracle) ORACLE=TRUE;;
+		--with-mysql) MYSQL=TRUE;;
+		--with-apache) APACHE=TRUE;;
+		--with-db2) DB2=TRUE;;
+		--with-cassandra) CASSANDRA=TRUE;;
+		--debug) DEBUG=TRUE;;
+		--help) HELP=TRUE;;
+		-h) HELP=TRUE;;
+		*) echo -e "\n${RD}Invalid flag detected… aborting.${NC}"
+		  HELP=TRUE
+		  break;;
+	esac
 shift
 done
+
+if [[ $HELP == TRUE ]]
+then
+	echo -e "\nList of available keys:\n"
+	echo "   --with-oracle                  Install driver and PHP extensions for work with Oracle DB"
+	echo "   --with-mysql                   Install MariaDB as default system database for DreamFactory"
+	echo "   --with-apache                  Install Apache2 web server for DreamFactory"
+	echo "   --with-db2                     Install driver and PHP extensions for work with IBM DB2"
+	echo "   --with-cassandra               Install driver and PHP extensions for work with Cassandra DB"
+	echo "   --debug                        Enable installation process logging to file in /tmp folder."
+	echo -e "   -h, --help                     Show this help\n"
+	exit 1
+fi
 
 if [[ ! $DEBUG == TRUE ]]
 then
@@ -146,7 +164,6 @@ then
 	                        echo -e  "${RD}\nCould not install Apache. Exiting.${NC}" >&5
 	                        exit 1
 	                fi
-	                #a2enmod rewrite
 	                # Create apache2 site entry
 	                WEB_PATH=/etc/httpd/conf.d/dreamfactory.conf
 			echo '<VirtualHost *:80>' > $WEB_PATH
@@ -331,7 +348,7 @@ then
 	fi
 fi
 
-### DRIVERS FOR ORACLE ( ONLY WITH KEY --oracle )
+### DRIVERS FOR ORACLE ( ONLY WITH KEY --with-oracle )
 php -m | grep -E "^oci8"
 if (( $? >= 1 ))
 then
@@ -364,7 +381,6 @@ then
 	        		exit 1
 			fi
 			echo "extension=oci8.so" > /etc/php.d/20-oci8.ini
-			#ln -s /usr/lib64/libnsl.so.2.0.0 /usr/lib64/libnsl.so.1
 
 			php -m | grep -E "^oci8"
 			if (( $? >= 1 ))
@@ -374,6 +390,7 @@ then
 		else
 			echo -e  "${RD}Drivers not found. Skipping...\n${NC}" >&5
 		fi
+    		unset DRIVERS_PATH
 	fi
 fi
 ### DRIVERS FOR IBM DB2 PDO ( ONLY WITH KEY --with-db2 )
@@ -419,6 +436,7 @@ then
                         then
                                 echo -e  "${RD}\nCould not install pdo_ibm extension.${NC}" >&5
 			else
+				### DRIVERS FOR IBM DB2 ( ONLY WITH KEY --with-db2 )
 				php -m | grep -E "^ibm_db2"
 				if (( $? >= 1 ))
 				then
@@ -519,6 +537,19 @@ then
         fi
 fi
 
+### Install Node.js
+node -v
+if (( $? >= 1 ))
+then
+	curl -sL https://rpm.nodesource.com/setup_10.x | bash -
+	yum install -y nodejs
+	if (( $? >= 1 ))
+	then
+        	echo -e  "${RD}\n${ERROR_STRING}${NC}" >&5
+        	exit 1
+	fi
+	NODE_PATH=$(whereis node | cut -d" " -f2)
+fi
 ### INSTALL PCS
 php -m | grep -E "^pcs"
 if (( $? >= 1 ))
@@ -772,7 +803,7 @@ then
 	fi
 	DF_CLEAN_INSTALLATION=TRUE
 else
-	echo -e  "${RD}DreamFactory installation folder detected. Skipping installation.\n${NC}" >&5
+	echo -e  "${RD}DreamFactory detected.\n${NC}" >&5
 	DF_CLEAN_INSTALLATION=FALSE
 fi
 
@@ -781,7 +812,7 @@ then
         ls /opt/dreamfactory/composer.{json,lock,json-dist}
         if (( $? == 0 ))
         then
-                echo -e  "${RD}Licenses files found. Are you want to install a new licenses? [Yy/Nn]${NC}" >&5
+                echo -e  "${RD}Would you like to upgrade your instance? [Yy/Nn]${NC}" >&5
                 read LICENSE_FILE_ANSWER
                 if [[ -z $LICENSE_FILE_ANSWER ]]
                 then
@@ -811,7 +842,7 @@ then
                         cp $LICENSE_PATH/composer.{json,lock,json-dist} /opt/dreamfactory/
                         LICENSE_INSTALLED=TRUE
                         echo -e "\n${GN}Licenses file installed. ${NC}\n" >&5
-                        echo -e  "${RD}Installing DreamFactory...\n${NC}" >&5
+                        echo -e  "${GN}Installing DreamFactory...\n${NC}" >&5
                 fi
         else
                 echo -e  "\n${RD}Skipping...\n${NC}" >&5
@@ -911,14 +942,25 @@ then
                 		CURRENT_KEY=$(grep DF_LICENSE_KEY .env)
                 	        echo -e "${MG}\nPlease provide your new license key:${NC}"
                 	        read LICENSE_KEY
-                	        if [[ -z $LICENSE_KEY ]]
+                	        size=${#LICENSE_KEY}
+				if [[ -z $LICENSE_KEY ]]
                 	        then
                 	        	until [[ ! -z $LICENSE_KEY ]]
                 	                do
                 	                	echo -e "${RD}\nThe field can't be empty!${NC}"
                 	                        read LICENSE_KEY
+						size=${#LICENSE_KEY}
                 	                done
-                	        fi
+				elif (( $size != 32 ))
+                        	then
+                                	until (( $size == 32 ))
+                                	do
+                                        	echo -e "${RD}\nInvalid License Key provided${NC}"
+                                        	echo -e "${MG}\nPlease provide your license key:${NC}"
+                                        	read LICENSE_KEY
+                                        	size=${#LICENSE_KEY}
+                                	done
+                        	fi
                 	        ###Change license key in .env file
                 	        sed -i "s/$CURRENT_KEY/DF_LICENSE_KEY=$LICENSE_KEY/" .env
                 	  else
@@ -927,13 +969,24 @@ then
           	else
                 	  echo -e "${MG}\nPlease provide your license key:${NC}" #Install key if not found existing key.
                   	read LICENSE_KEY
+			size=${#LICENSE_KEY}
                   	if [[ -z $LICENSE_KEY ]]
                   	then
                   		until [[ ! -z $LICENSE_KEY ]]
                         	do
                         		echo -e "${RD}The field can't be empty!${NC}"
                                 	read LICENSE_KEY
+					size=${#LICENSE_KEY}
                         	done
+			elif (( $size != 32 ))
+                        then
+                                until (( $size == 32 ))
+                                do
+                                         echo -e "${RD}\nInvalid License Key provided${NC}"
+                                         echo -e "${MG}\nPlease provide your license key:${NC}"
+                                         read LICENSE_KEY
+                                         size=${#LICENSE_KEY}
+                                done
                   	fi
                   	###Add license key to .env file
                   	echo -e "\nDF_LICENSE_KEY=${LICENSE_KEY}" >> .env
@@ -941,8 +994,16 @@ then
 	fi
 fi
 
-chmod -R 2775 storage/ bootstrap/cache/
-chown -R apache:$CURRENT_USER storage/ bootstrap/cache/
+chmod -R 2775 /opt/dreamfactory/
+chown -R apache:$CURRENT_USER /opt/dreamfactory/
+
+### Uncomment nodejs in .env file
+grep -E "^#DF_NODEJS_PATH" .env > /dev/null
+if (( $? == 0 ))
+then
+        sed -i "s,\#DF_NODEJS_PATH=/usr/local/bin/node,DF_NODEJS_PATH=$NODE_PATH," .env
+fi
+
 sudo -u $CURRENT_USER bash -c "php artisan cache:clear -q"
 
 #Add rules if SELinux enabled

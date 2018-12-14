@@ -22,9 +22,27 @@ do
 		--with-db2) DB2=TRUE;;
 		--with-cassandra) CASSANDRA=TRUE;;
 		--debug) DEBUG=TRUE;;
+		--help) HELP=TRUE;;
+		-h) HELP=TRUE;;
+		*) echo -e "\n${RD}Invalid flag detected… aborting.${NC}"
+		   HELP=TRUE
+                   break;;
 	esac
 shift
 done
+
+if [[ $HELP == TRUE ]]
+then
+	echo -e "\nList of available keys:\n"
+	echo "   --with-oracle                  Install driver and PHP extensions for work with Oracle DB"
+	echo "   --with-mysql                   Install MariaDB as default system database for DreamFactory"
+	echo "   --with-apache                  Install Apache2 web server for DreamFactory"
+	echo "   --with-db2                     Install driver and PHP extensions for work with IBM DB2"
+	echo "   --with-cassandra               Install driver and PHP extensions for work with Cassandra DB"
+	echo "   --debug                        Enable installation process logging to file in /tmp folder."
+	echo -e "   -h, --help                     Show this help\n"
+	exit 1
+fi
 
 if [[ ! $DEBUG == TRUE ]]
 then
@@ -354,7 +372,7 @@ then
 	fi
 fi
 
-### DRIVERS FOR ORACLE ( ONLY WITH KEY --oracle )
+### DRIVERS FOR ORACLE ( ONLY WITH KEY --with-oracle )
 php -m | grep -E "^oci8"
 if (( $? >= 1 ))
 then
@@ -370,7 +388,7 @@ then
 		if (( $? == 0 ))
 		then
 			echo -e  "${GN}Drivers found.\n${NC}" >&5
-	        	apt-get install -y libaio1
+	        	apt install -y libaio1
 			echo "/opt/oracle/instantclient_18_3" > /etc/ld.so.conf.d/oracle-instantclient.conf
 	        	ldconfig
 	        	printf "instantclient,/opt/oracle/instantclient_18_3\n" | pecl install oci8
@@ -390,6 +408,7 @@ then
 		else
 			echo -e  "${RD}Drivers not found. Skipping...\n${NC}" >&5
 		fi
+		unset DRIVERS_PATH
 	fi
 fi
 
@@ -429,25 +448,25 @@ then
                         if (( $? >= 1 ))
                         then
                                 echo -e  "${RD}\nCould not install pdo_ibm extension.${NC}" >&5
-												else
-																### DRIVERS FOR IBM DB2 ( ONLY WITH KEY --with-db2 )
-																php -m | grep -E "^ibm_db2"
-																if (( $? >= 1 ))
-																then
-																				printf "/opt/dsdriver/ \n" | pecl install ibm_db2
-																				if (( $? >= 1 ))
-																				then
-																								echo -e  "${RD}\nibm_db2 extension installation error.${NC}" >&5
-																								exit 1
-																				fi
-																				echo "extension=ibm_db2.so" > /etc/php/${PHP_VERSION_INDEX}/mods-available/ibm_db2.ini
-																				phpenmod -s ALL ibm_db2
-																				php -m | grep ibm_db2
-																				if (( $? >= 1 ))
-																				then
-																								echo -e  "${RD}\nCould not install ibm_db2 extension.${NC}" >&5
-																				fi
-																fi
+			else
+				### DRIVERS FOR IBM DB2 ( ONLY WITH KEY --with-db2 )
+				php -m | grep -E "^ibm_db2"
+				if (( $? >= 1 ))
+				then
+					printf "/opt/dsdriver/ \n" | pecl install ibm_db2
+					if (( $? >= 1 ))
+					then
+						echo -e  "${RD}\nibm_db2 extension installation error.${NC}" >&5
+						exit 1
+					fi
+					echo "extension=ibm_db2.so" > /etc/php/${PHP_VERSION_INDEX}/mods-available/ibm_db2.ini
+					phpenmod -s ALL ibm_db2
+					php -m | grep ibm_db2
+					if (( $? >= 1 ))
+					then
+						echo -e  "${RD}\nCould not install ibm_db2 extension.${NC}" >&5
+					fi
+				fi
                         fi
                 else
                         echo -e  "${RD}Drivers not found. Skipping...\n${NC}" >&5
@@ -545,6 +564,20 @@ then
         then
                 echo -e  "${RD}\nCould not install python bunch extension.${NC}" >&5
         fi
+fi
+
+### Install Node.js
+node -v
+if (( $? >= 1 ))
+then
+	curl -sL https://deb.nodesource.com/setup_10.x | bash -
+	apt-get install -y nodejs
+	if (( $? >= 1 ))
+	then
+        	echo -e  "${RD}\n${ERROR_STRING}${NC}" >&5
+        	exit 1
+	fi
+	NODE_PATH=$(whereis node | cut -d" " -f2)
 fi
 
 ### INSTALL PCS
@@ -759,13 +792,13 @@ then
 	                echo -e "${RD}Connection to Database failed. Exit \n${NC}" >&5
 	                exit 1
 	        fi
-		echo -e "${MG}What would you like to name your system database? (e.g. dreamfactory) ${NC}" >&5
+		echo -e "\n${MG}What would you like to name your system database? (e.g. dreamfactory) ${NC}" >&5
 		read DF_SYSTEM_DB
 		if [[ -z $DF_SYSTEM_DB ]]
                 then
 			until [[ ! -z $DF_SYSTEM_DB ]]
 			do
-				echo -e "${RD}The name can't be empty!${NC}" >&5
+				echo -e "\n${RD}The name can't be empty!${NC}" >&5
 				read DF_SYSTEM_DB
 			done
                 fi
@@ -832,7 +865,7 @@ then
 	fi
 	DF_CLEAN_INSTALLATION=TRUE
 else
-	echo -e  "${RD}DreamFactory installation folder detected. Skipping installation.\n${NC}" >&5
+	echo -e  "${RD}DreamFactory detected.\n${NC}" >&5
 	DF_CLEAN_INSTALLATION=FALSE
 fi
 
@@ -841,7 +874,7 @@ then
         ls /opt/dreamfactory/composer.{json,lock,json-dist}
         if (( $? == 0 ))
         then
-                echo -e  "${RD}Licenses files found. Are you want to install a new licenses? [Yy/Nn]${NC}" >&5
+                echo -e  "${RD}Would you like to upgrade your instance? [Yy/Nn]${NC}" >&5
                 read LICENSE_FILE_ANSWER
                 if [[ -z $LICENSE_FILE_ANSWER ]]
                 then
@@ -871,7 +904,7 @@ then
                         cp $LICENSE_PATH/composer.{json,lock,json-dist} /opt/dreamfactory/
                         LICENSE_INSTALLED=TRUE
                         echo -e "\n${GN}Licenses file installed. ${NC}\n" >&5
-                        echo -e  "${RD}Installing DreamFactory...\n${NC}" >&5
+                        echo -e  "${GN}Installing DreamFactory...\n${NC}" >&5
                 fi
         else
                 echo -e  "\n${RD}Skipping...\n${NC}" >&5
@@ -972,14 +1005,25 @@ then
                                 CURRENT_KEY=$(grep DF_LICENSE_KEY .env)
                                 echo -e "${MG}\nPlease provide your new license key:${NC}"
                                 read LICENSE_KEY
+				size=${#LICENSE_KEY}
                                 if [[ -z $LICENSE_KEY ]]
                                 then
                                         until [[ ! -z $LICENSE_KEY ]]
                                         do
                                                 echo -e "${RD}\nThe field can't be empty!${NC}"
                                                 read LICENSE_KEY
+						size=${#LICENSE_KEY}
                                         done
-                                fi
+                                elif (( $size != 32 ))
+				then
+                                        until (( $size == 32 ))
+                                        do
+                                                echo -e "${RD}\nInvalid License Key provided${NC}"
+                                                echo -e "${MG}\nPlease provide your license key:${NC}"
+                                                read LICENSE_KEY
+                                                size=${#LICENSE_KEY}
+                                        done
+				fi
                                 ###Change license key in .env file
                                 sed -i "s/$CURRENT_KEY/DF_LICENSE_KEY=$LICENSE_KEY/" .env
                         else
@@ -988,12 +1032,23 @@ then
                 else
                         echo -e "${MG}\nPlease provide your license key:${NC}" #Install key if not found existing key.
                         read LICENSE_KEY
+			size=${#LICENSE_KEY}
                         if [[ -z $LICENSE_KEY ]]
                         then
                                 until [[ ! -z $LICENSE_KEY ]]
                                 do
                                         echo -e "${RD}The field can't be empty!${NC}"
                                         read LICENSE_KEY
+					size=${#LICENSE_KEY}
+                                done
+                        elif (( $size != 32 ))
+                        then
+                                until (( $size == 32 ))
+                                do
+                                	echo -e "${RD}\nInvalid License Key provided${NC}"
+                                        echo -e "${MG}\nPlease provide your license key:${NC}"
+                                        read LICENSE_KEY
+                                        size=${#LICENSE_KEY}
                                 done
                         fi
                         ###Add license key to .env file
@@ -1003,10 +1058,17 @@ then
         fi
 fi
 
-chmod -R 2775 storage/ bootstrap/cache/
-chown -R www-data:$CURRENT_USER storage/ bootstrap/cache/
-su $CURRENT_USER -c "php artisan cache:clear -q"
+chmod -R 2775 /opt/dreamfactory/
+chown -R www-data:$CURRENT_USER /opt/dreamfactory/
 
+### Uncomment nodejs in .env file
+grep -E "^#DF_NODEJS_PATH" .env > /dev/null
+if (( $? == 0 ))
+then
+	sed -i "s,\#DF_NODEJS_PATH=/usr/local/bin/node,DF_NODEJS_PATH=$NODE_PATH," .env
+fi
+
+su $CURRENT_USER -c "php artisan cache:clear -q"
 echo -e "\n${GN}Installation finished! ${NC}"
 
 if [[ $DEBUG == TRUE ]]

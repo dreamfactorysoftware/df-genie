@@ -1007,6 +1007,7 @@ then
                 	      	CURRENT_KEY=$(grep DF_LICENSE_KEY .env)
 				echo -e "${MG}\nPlease provide your new license key:${NC}"
                 		read LICENSE_KEY
+				size=${#LICENSE_KEY}
                 		if [[ -z $LICENSE_KEY ]]
                 		then
                 	       		until [[ ! -z $LICENSE_KEY ]]
@@ -1015,6 +1016,16 @@ then
                 	  			read LICENSE_KEY
                 	        	done
                			fi
+				if (( $size != 32 ))
+				then
+					until (( $size == 32 ))
+                                        do
+                                                echo -e "${RD}\nInvalid License Key provided${NC}"
+						echo -e "${MG}\nPlease provide your license key:${NC}"
+                                                read LICENSE_KEY
+                                        	size=${#LICENSE_KEY}
+					done
+				fi
 				###Change license key in .env file
                 	        sed -i "s/$CURRENT_KEY/DF_LICENSE_KEY=$LICENSE_KEY/" .env
 			else
@@ -1023,6 +1034,7 @@ then
 		else
 			echo -e "${MG}\nPlease provide your license key:${NC}" #Install key if not found existing key.
         		read LICENSE_KEY
+			size=${#LICENSE_KEY}
         		if [[ -z $LICENSE_KEY ]]
         		then
         			until [[ ! -z $LICENSE_KEY ]]
@@ -1031,6 +1043,16 @@ then
                 			read LICENSE_KEY
                 	       	done
               		fi
+			if (( $size != 32 ))
+                        then
+				until (( $size == 32 ))
+                                do
+                                         echo -e "${RD}\nInvalid License Key provided${NC}"
+                                         echo -e "${MG}\nPlease provide your license key:${NC}"
+					 read LICENSE_KEY
+					 size=${#LICENSE_KEY}
+                                done
+                        fi
          		###Add license key to .env file
 			echo -e "\nDF_LICENSE_KEY=${LICENSE_KEY}" >> .env
 

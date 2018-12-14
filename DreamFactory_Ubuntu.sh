@@ -572,7 +572,7 @@ fi
 node -v 
 if (( $? >= 1 ))
 then
-	curl -sL https://deb.nodesource.com/setup_10.x | sudo bash -
+	curl -sL https://deb.nodesource.com/setup_10.x | bash -
 	apt-get install -y nodejs
 	if (( $? >= 1 ))
 	then
@@ -866,7 +866,7 @@ then
 	fi
 	DF_CLEAN_INSTALLATION=TRUE
 else
-	echo -e  "${RD}DreamFactory installation folder detected. Skipping installation.\n${NC}" >&5
+	echo -e  "${RD}DreamFactory detected.\n${NC}" >&5
 	DF_CLEAN_INSTALLATION=FALSE
 fi
 
@@ -875,7 +875,7 @@ then
 	ls /opt/dreamfactory/composer.{json,lock,json-dist}
 	if (( $? == 0 ))
         then
-                echo -e  "${RD}Licenses files found. Are you want to install a new licenses? [Yy/Nn]${NC}" >&5
+                echo -e  "${RD}Would you like to upgrade your instance? [Yy/Nn]${NC}" >&5
 		read LICENSE_FILE_ANSWER
  		if [[ -z $LICENSE_FILE_ANSWER ]]
                 then
@@ -905,7 +905,7 @@ then
 			cp $LICENSE_PATH/composer.{json,lock,json-dist} /opt/dreamfactory/
 			LICENSE_INSTALLED=TRUE
 			echo -e "\n${GN}Licenses file installed. ${NC}\n" >&5
-			echo -e  "${RD}Installing DreamFactory...\n${NC}" >&5
+			echo -e  "${GN}Installing DreamFactory...\n${NC}" >&5
 		fi
 	else
 		echo -e  "\n${RD}Skipping...\n${NC}" >&5
@@ -1014,9 +1014,9 @@ then
                 	       		do
                 	       			echo -e "${RD}\nThe field can't be empty!${NC}"
                 	  			read LICENSE_KEY
+						size=${#LICENSE_KEY}
                 	        	done
-               			fi
-				if (( $size != 32 ))
+				elif (( $size != 32 ))
 				then
 					until (( $size == 32 ))
                                         do
@@ -1041,9 +1041,9 @@ then
                 		do
                 			echo -e "${RD}The field can't be empty!${NC}"
                 			read LICENSE_KEY
+					size=${#LICENSE_KEY}
                 	       	done
-              		fi
-			if (( $size != 32 ))
+			elif (( $size != 32 ))
                         then
 				until (( $size == 32 ))
                                 do

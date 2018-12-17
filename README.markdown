@@ -8,7 +8,7 @@ For this wizard to work properly several conditions must be met:
 
 * The wizard will be run on a fresh Ubuntu installation. If you have existing resources installed on the server the script will skip some installation steps and you may need to manually perform additional configuration steps.
 * DreamFactory will be the only web app running on this server. If you intend to run other sites using virtual hosts you will need to adjust the configuration to suit this requirement.
-* If the server has already installed PHP version 7.1, the script will install all extensions for DreamFactory compatible with that version PHP. Otherwise PHP 7.2 will be installed. DreamFactory no longer supports PHP 7.0.
+* If the server has already installed PHP version 7.1, the script will install all extensions for DreamFactory compatible with that version PHP. Otherwise PHP 7.2 will be installed. DreamFactory 2.13.+ no longer supports PHP 7.0.
 * The executing user must be able to use sudo to run the installer.
 * You'll need to make the script executable by changing its permissions (`sudo chmod +x DreamFactory_Ubuntu.sh`)
 
@@ -33,7 +33,7 @@ In the case of MySQL, PostgreSQL, and MS SQL Server you'll be prompted to provid
 
 ### Enabling Oracle
 
-Passing the ```--oracle``` option will result in installation of PHP's Oracle (oci8) extension. You will need to supply a Silver or Gold license files to enable this functionality, [contact us about upgrading!](https://www.dreamfactory.com/contact-demo) If you choose this option you'll be prompted to identify the location of the the Oracle instant client zip files by providing an absolute path. Due to licensing restrictions we are unable to include these files with the installer, however you can download these files from [here](https://www.oracle.com/technetwork/topics/linuxx86-64soft-092277.html). You can pass the option like this:
+Passing the ```--with-oracle``` option will result in installation of PHP's Oracle (oci8) extension. You will need to supply a Silver or Gold license files to enable this functionality. If you choose this option you'll be prompted to identify the location of the the Oracle instant client zip files by providing an absolute path. Due to licensing restrictions we are unable to include these files with the installer, however you can download these files from [here](https://www.oracle.com/technetwork/topics/linuxx86-64soft-092277.html). You can pass the option like this:
 
     $ sudo ./DreamFactory_Ubuntu.sh --with-oracle
 
@@ -46,17 +46,36 @@ You should not unzip these files. Just upload them to your server and write down
 
 The script only supports the latest version of Oracle drivers (18.3.0).
 
+### Enabling IBM DB2
+
+Passing the ```--with-db2``` option will result in installation of PHP's IBM DB2 (ibm_db2/pdo_ibm) extension.
+Due to licensing restrictions we are unable to include these files with the installer, however you can download these files from [here](https://www-01.ibm.com/marketing/iwm/iwm/web/preLogin.do?source=swg-idsdpds). This download requires you to register for a free account with IBM. You can pass the option like this:
+
+    $ sudo ./DreamFactory_Ubuntu.sh --with-db2
+
+After navigating to the IBM website you'll want to download the "IBM Data Server Driver Package (Linux AMD64 and Intel EM64T)" file:
+
+* ibm_data_server_driver_package_linuxx64_v11.1.tar.gz
+
+You should not unzip these files. Just upload them to your server and write down the absolute path to their location as you'll need to supply this path during the installation process.
+
+### Enabling Cassandra 
+
+Passing the ```--with-cassandra``` option will result in installation of PHP's Cassandra extension. You can pass the option like this:
+
+    $ sudo ./DreamFactory_Ubuntu.sh --with-cassandra
+
 ### Installing Apache
 
-Passing the ```--apache``` option will result in the Apache 2 web server being installed instead of the default Nginx web server. You can pass the option like this:
+Passing the ```--with-apache``` option will result in the Apache 2 web server being installed instead of the default Nginx web server. You can pass the option like this:
 
-    $ sudo ./DreamFactory_Ubuntu.sh --apache
+    $ sudo ./DreamFactory_Ubuntu.sh --with-apache
 
 ### Supplying Multiple Options
 
 You can supply multiple options to the installer like so:
 
-    $ sudo ./DreamFactory_Ubuntu.sh --apache --oracle --with-mysql
+    $ sudo ./DreamFactory_Ubuntu.sh --with-apache --with-oracle --with-mysql --with-cassandra --with-db2
 
 
 ### Accessing Your DreamFactory Installation

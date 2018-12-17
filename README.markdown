@@ -109,4 +109,7 @@ After finishing the installation process you can access to DreamFactory by typin
 ## Troubleshooting
 
 If you get an error at some stage of the installation, fix it and run the script again. The script shows the installation steps to understand at what stage you have a problem.
-For more detailed information about the installation process and errors, you can use a ```debug``` key. The script will save all detailed information in a log file. The log file can be found in **tmp** directory. Full path: **/tmp/dreamfactory_installer.log**
+For more detailed information about the installation process and errors, you can use a ```--debug``` key. The script will save all detailed information in a log file. The log file can be found in **tmp** directory. Full path: **/tmp/dreamfactory_installer.log**
+
+    $ sudo ./DreamFactory_Ubuntu.sh --debug
+    $ su -c "./DreamFactory_Debian.sh --debug"

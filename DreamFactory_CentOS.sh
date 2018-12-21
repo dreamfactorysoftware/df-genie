@@ -907,10 +907,16 @@ then
         echo -e "\n"
 	MYSQL_INSTALLED=TRUE
 
-elif [[ ! $MYSQL == TRUE && $DF_CLEAN_INSTALLATION == TRUE ]]
+elif [[ ! $MYSQL == TRUE && $DF_CLEAN_INSTALLATION == TRUE ]] || [[ $DB_INSTALLED == TRUE ]]
 then
 	sudo -u $CURRENT_USER bash -c "php artisan df:env"
+	if [[ $DB_INSTALLED == TRUE ]]
+	then
+		sed -i 's/\#DB\_CHARSET\=/DB\_CHARSET\=utf8/g' .env
+        	sed -i 's/\#DB\_COLLATION\=/DB\_COLLATION\=utf8\_unicode\_ci/g' .env
+	fi
 fi
+
 
 if [[ $DF_CLEAN_INSTALLATION == TRUE ]]
 then

@@ -537,6 +537,19 @@ then
         fi
 fi
 
+### INSTALL PYTHON3 MUNCH
+yum -y install https://centos7.iuscommunity.org/ius-release.rpm
+yum -y install python34u python34u-pip
+pip3 list | grep munch
+if (( $? >= 1 ))
+then
+        pip3 install munch
+        if (( $? >= 1 ))
+        then
+                echo -e  "${RD}\nCould not install python3.4 munch extension.${NC}" >&5
+        fi
+fi
+
 ### Install Node.js
 node -v
 if (( $? >= 1 ))

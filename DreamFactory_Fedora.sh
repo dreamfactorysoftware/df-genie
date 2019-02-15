@@ -84,7 +84,8 @@ dnf install -y git \
 	lsof \
 	libmcrypt-devel \
 	readline-devel \
-	libzip-devel
+	libzip-devel \
+	make
 
 # Check installation status
 if (( $? >= 1 ))

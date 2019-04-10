@@ -360,11 +360,11 @@ then
         	then
                 	DRIVERS_PATH="."
         	fi
-		ls -f $DRIVERS_PATH/oracle-instantclient18.3-*-18.3.0.0.0-1.x86_64.rpm
+		ls -f $DRIVERS_PATH/oracle-instantclient18.*.rpm
 		if (( $? == 0 ))
 		then
 			echo -e  "${GN}Drivers found.\n${NC}" >&5
-	        	yum install -y libaio systemtap-sdt-devel $DRIVERS_PATH/oracle-instantclient18.3-*-18.3.0.0.0-1.x86_64.rpm
+	        	yum install -y libaio systemtap-sdt-devel $DRIVERS_PATH/oracle-instantclient18.*.rpm
 	        	if (( $? >= 1 ))
 			then
 	        		echo -e  "${RD}\nOracle instant client installation error${NC}" >&5

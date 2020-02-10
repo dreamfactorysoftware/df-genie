@@ -561,7 +561,7 @@ apt install -y python python-pip
 pip list | grep bunch
 if (( $? >= 1 ))
 then
-	pip install bunch
+	      pip install bunch
         if (( $? >= 1 ))
         then
                 echo -e  "${RD}\nCould not install python bunch extension.${NC}" >&5
@@ -573,7 +573,7 @@ apt install -y python3 python3-pip
 pip3 list | grep munch
 if (( $? >= 1 ))
 then
-	pip3 install munch
+      	pip3 install munch
         if (( $? >= 1 ))
         then
                 echo -e  "${RD}\nCould not install python3 munch extension.${NC}" >&5

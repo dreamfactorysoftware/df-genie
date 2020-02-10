@@ -538,15 +538,14 @@ then
 fi
 
 ### INSTALL PYTHON3 MUNCH
-yum -y install https://centos7.iuscommunity.org/ius-release.rpm
-yum -y install python34u python34u-pip
-pip3 list | grep munch
+yum install -y python3 python3-pip
+pip3 list --format=legacy | grep munch
 if (( $? >= 1 ))
 then
         pip3 install munch
         if (( $? >= 1 ))
         then
-                echo -e  "${RD}\nCould not install python3.4 munch extension.${NC}" >&5
+                echo -e  "${RD}\nCould not install python3 munch extension.${NC}" >&5
         fi
 fi
 

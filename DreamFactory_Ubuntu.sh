@@ -141,6 +141,7 @@ apt-get install -y ${PHP_VERSION}-common \
 	${PHP_VERSION}-ldap \
 	${PHP_VERSION}-pgsql \
 	${PHP_VERSION}-interbase \
+	${PHP_VERSION}-gd \
 	${PHP_VERSION}-sybase
 
 
@@ -407,9 +408,9 @@ then
 		then
 			echo -e  "${GN}Drivers found.\n${NC}" >&5
 	        	apt install -y libaio1
-			echo "/opt/oracle/instantclient_18_3" > /etc/ld.so.conf.d/oracle-instantclient.conf
+			echo "/opt/oracle/instantclient_19_5" > /etc/ld.so.conf.d/oracle-instantclient.conf
 	        	ldconfig
-	        	printf "instantclient,/opt/oracle/instantclient_18_3\n" | pecl install oci8
+	        	printf "instantclient,/opt/oracle/instantclient_19_5\n" | pecl install oci8
 	        	if (( $? >= 1 ))
 			then
 	        		echo -e  "${RD}\nOracle instant client installation error${NC}" >&5

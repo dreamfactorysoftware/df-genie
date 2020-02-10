@@ -127,6 +127,7 @@ then
 	php-ldap \
 	php-pgsql \
 	php-interbase \
+	php-gd \
 	php-pdo-dblib
 else
 	dnf install -y php-common \
@@ -421,17 +422,17 @@ then
         	then
                 	DRIVERS_PATH="."
         	fi
-		ls -f $DRIVERS_PATH/oracle-instantclient18.*.rpm
+		ls -f $DRIVERS_PATH/oracle-instantclient19.*.rpm
 		if (( $? == 0 ))
 		then
 			echo -e  "${GN}Drivers found.\n${NC}" >&5
-	        	dnf install -y libaio systemtap-sdt-devel $DRIVERS_PATH/oracle-instantclient18.*.rpm
+	        	dnf install -y libaio systemtap-sdt-devel $DRIVERS_PATH/oracle-instantclient19.*.rpm
 	        	if (( $? >= 1 ))
 			then
 	        		echo -e  "${RD}\nOracle instant client installation error${NC}" >&5
 	        		exit 1
 			fi
-			echo "/usr/lib/oracle/18.3/client64/lib" > /etc/ld.so.conf.d/oracle-instantclient.conf
+			echo "/usr/lib/oracle/19.5/client64/lib" > /etc/ld.so.conf.d/oracle-instantclient.conf
 			ldconfig
 			export PHP_DTRACE=yes
 

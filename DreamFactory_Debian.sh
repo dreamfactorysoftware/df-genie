@@ -571,7 +571,7 @@ apt install -y python3 python3-pip
 pip3 list | grep munch
 if (( $? >= 1 ))
 then
-	pip3 install munch
+	      pip3 install munch
         if (( $? >= 1 ))
         then
                 echo -e  "${RD}\nCould not install python3 munch extension.${NC}" >&5

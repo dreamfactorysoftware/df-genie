@@ -125,6 +125,7 @@ yum --enablerepo=remi-php72 install -y php-common \
         php-pgsql \
         php-interbase \
         php-pdo-dblib \
+        php-gd \
 	php-zip
 
 if (( $? >= 1 ))

@@ -9,6 +9,11 @@ DEFAULT_PHP_VERSION="php7.2"
 
 CURRENT_OS=$(cat /etc/os-release | grep VERSION_ID | cut -d "=" -f 2 | cut -c 2)
 
+if (( $CURRENT_OS == 1 ))
+	then
+		CURRENT_OS=$(cat /etc/os-release | grep VERSION_ID | cut -d "=" -f 2 | cut -c 2-3)
+fi
+
 ERROR_STRING="Installation error. Exiting"
 
 CURRENT_PATH=$(pwd)
@@ -81,6 +86,7 @@ echo -e "${GN}Step 1: Installing system dependencies...\n${NC}" >&5
 apt-get update
 apt-get install -y git \
 	curl \
+	wget \
 	zip \
 	unzip \
 	ca-certificates \
@@ -332,8 +338,11 @@ then
 	elif (( $CURRENT_OS == 9 ))
 	then
 		curl https://packages.microsoft.com/config/debian/9/prod.list > /etc/apt/sources.list.d/mssql-release.list
+	elif (( $CURRENT_OS == 10 ))
+	then
+		curl https://packages.microsoft.com/config/debian/10/prod.list > /etc/apt/sources.list.d/mssql-release.list
 	else
-		echo -e "${RD}The script support only Debian 8 and 9 versions. Exit.\n ${NC}">&5
+		echo -e "${RD}The script support only Debian 8, 9, and 10 versions. Exit.\n ${NC}">&5
 		exit 1
 	fi
 	apt-get update
@@ -621,7 +630,7 @@ then
                 wget -P /tmp http://packages.couchbase.com/releases/couchbase-release/couchbase-release-1.0-4-amd64.deb
                 dpkg -i /tmp/couchbase-release-1.0-4-amd64.deb
 
-        elif (( $CURRENT_OS == 9 ))
+        elif (( $CURRENT_OS == 9 || $CURRENT_OS == 10 ))
         then
                 wget -O - http://packages.couchbase.com/ubuntu/couchbase.key | apt-key add -
                 echo "deb http://packages.couchbase.com/ubuntu bionic bionic/main" > /etc/apt/sources.list.d/couchbase.list
@@ -693,13 +702,13 @@ then
 	        	apt-key adv --no-tty --recv-keys --keyserver keyserver.ubuntu.com 0xcbcb082a1bb943db
 	        	add-apt-repository 'deb [arch=amd64,i386,ppc64el] http://mariadb.petarmaric.com/repo/10.3/debian jessie main'
 
-		elif (( $CURRENT_OS == 9 ))
+		elif (( $CURRENT_OS == 9 || $CURRENT_OS == 10))
 	        then
 	        	apt-key adv --no-tty --recv-keys --keyserver keyserver.ubuntu.com 0xF1656F24C74CD1D8
 	        	add-apt-repository 'deb [arch=amd64,i386,ppc64el] http://mariadb.petarmaric.com/repo/10.3/debian stretch main'
 
 		else
-			echo -e "${RD}The script support only Debian 8 and 9 versions. Exit.\n${NC}" >&5
+			echo -e "${RD}The script support only Debian 8, 9, and 10 versions. Exit.\n${NC}" >&5
 			exit 1
 	        fi
 

@@ -144,6 +144,7 @@ else
 	php-ldap \
 	php-pgsql \
 	php-interbase \
+	php-gd \
 	php-pdo-dblib
 fi
 if (( $? >= 1 ))

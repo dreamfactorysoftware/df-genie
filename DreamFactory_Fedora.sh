@@ -5,6 +5,9 @@ GN='\033[0;32m' #Green
 MG='\033[0;95m' #Magenta
 NC='\033[0m' # No Color
 
+ERROR_STRING="Installation error. Exiting"
+CURRENT_PATH=$(pwd)
+
 CURRENT_OS=$(cat /etc/os-release | grep VERSION_ID | cut -d "=" -f 2 | cut -c 1-2)
 
 ERROR_STRING="Installation error. Exiting"
@@ -14,7 +17,7 @@ CURRENT_PATH=$(pwd)
 while [[ -n $1 ]]
 do
 	case "$1" in
-        	--with-oracle) ORACLE=TRUE;;
+        --with-oracle) ORACLE=TRUE;;
 		--with-mysql) MYSQL=TRUE;;
 		--with-apache) APACHE=TRUE;;
 		--with-db2) DB2=TRUE;;
@@ -53,6 +56,24 @@ fi
 
 clear >&5
 
+echo_with_color()
+{
+  case $1 in
+    Red | RED | red)
+      echo -e "${NC}${RD} $2 ${NC}"
+    ;;
+    Green | GREEN | green)
+      echo -e "${NC}${GN} $2 ${NC}"
+    ;;
+    Magenta | MAGENTA | magenta)
+      echo -e "${NC}${MG} $2 ${NC}"
+    ;;
+    *)
+      echo -e "${NC} $2 ${NC}"
+    ;;
+  esac
+}
+
 # Make sure script run as sudo
 if (( $EUID  != 0 ));
 then
@@ -65,7 +86,7 @@ CURRENT_USER=$(logname)
 
 if [[ -z $SUDO_USER ]] && [[ -z $CURRENT_USER ]]
 then
-        echo -e "${RD}Enter username for installation DreamFactory:${NC}" >&5
+        echo_with_color red "Enter username for installation DreamFactory:" >&5
         read  CURRENT_USER
 fi
 
@@ -75,7 +96,7 @@ then
 fi
 
 ### STEP 1. Install system dependencies
-echo -e "${GN}Step 1: Installing system dependencies...\n${NC}" >&5
+echo_with_color green "Step 1: Installing system dependencies...\n" >&5
 dnf install -y git \
 	curl \
 	zip \
@@ -85,19 +106,23 @@ dnf install -y git \
 	libmcrypt-devel \
 	readline-devel \
 	libzip-devel \
-	make
+	make \
+	wget \
+	sudo \
+	procps \
+	firewalld
 
 # Check installation status
 if (( $? >= 1 ))
 then
-	echo -e  "${RD}\n${ERROR_STRING}${NC}" >&5
+	echo_with_color red "\n${ERROR_STRING}" >&5
 	exit 1
 fi
 
-echo -e "${GN}The system dependencies have been successfully installed.\n${NC}" >&5
+echo_with_color green "The system dependencies have been successfully installed.\n" >&5
 
 ### Step 2. Install PHP
-echo -e "${GN}Step 2: Installing PHP...\n${NC}" >&5
+echo_with_color green "Step 2: Installing PHP...\n" >&5
 
 # Install the php repository
 if  (( $CURRENT_OS == 27 ))
@@ -106,7 +131,7 @@ then
 	dnf config-manager --set-enabled remi-php72
 elif (( ! $CURRENT_OS == 28 ))
 then
-	echo -e "${RD} The script support only Fedora 27/28 versions. Exit.\n ${NC}"  >&5
+	echo_with_color red " The script support only Fedora 27/28 versions. Exit.\n "  >&5
         exit 1
 fi
 
@@ -149,16 +174,16 @@ else
 fi
 if (( $? >= 1 ))
 then
-        echo -e  "${RD}\n${ERROR_STRING}${NC}" >&5
+        echo_with_color red "\n${ERROR_STRING}" >&5
         exit 1
 fi
 
-echo -e "${GN}PHP installed.\n${NC}" >&5
+echo_with_color green "PHP installed.\n" >&5
 
 ### Step 3. Install Apache
 if [[ $APACHE == TRUE ]] ### Only with key --apache
 then
-	echo -e "${GN}Step 3: Installing Apache...\n${NC}" >&5
+	echo_with_color green "Step 3: Installing Apache...\n" >&5
 	# Check Apache installation status
 	ps aux | grep -v grep | grep httpd
 	CHECK_APACHE_PROCESS=$(echo $?)
@@ -168,20 +193,20 @@ then
 
 	if (( $CHECK_APACHE_PROCESS == 0 )) || (( $CHECK_APACHE_INSTALLATION == 0 ))
 	then
-	        echo -e  "${RD}Apache2 detected. Skipping installation. Configure Apache2 manually.\n${NC}" >&5
+	        echo_with_color red "Apache2 detected. Skipping installation. Configure Apache2 manually.\n" >&5
 	else
 		# Install Apache
 	        # Check if running web server on port 80
 		lsof -i :80 | grep LISTEN
 	        if (( $? == 0 ))
 	        then
-	                echo -e  "${RD}Port 80 taken.\n ${NC}" >&5
-	                echo -e  "${RD}Skipping installation Apache2. Install Apache2 manually.\n ${NC}" >&5
+	                echo_with_color red "Port 80 taken.\n " >&5
+	                echo_with_color red "Skipping installation Apache2. Install Apache2 manually.\n " >&5
 	        else
 	                dnf install -y httpd php
 	                if (( $? >= 1 ))
 	                  then
-	                        echo -e  "${RD}\nCould not install Apache. Exiting.${NC}" >&5
+	                        echo_with_color red "\nCould not install Apache. Exiting." >&5
 	                        exit 1
 	                fi
 	                # Create apache2 site entry
@@ -210,12 +235,12 @@ then
 
 									firewall-cmd --add-service=http
 
-	                echo -e "${GN}Apache2 installed.\n${NC}" >&5
+	                echo_with_color green "Apache2 installed.\n" >&5
 	        fi
 	fi
 
 else
-	echo -e "${GN}Step 3: Installing Nginx...\n${NC}" >&5 ### Default choice
+	echo_with_color green "Step 3: Installing Nginx...\n" >&5 ### Default choice
 
 	# Check nginx installation in the system
 	ps aux | grep -v grep | grep nginx
@@ -226,15 +251,15 @@ else
 
 	if (( $CHECK_NGINX_PROCESS == 0 )) || (( $CHECK_NGINX_INSTALLATION == 0 ))
 	then
-		echo -e  "${RD}Nginx detected. Skipping installation. Configure Nginx manually.\n${NC}" >&5
+		echo_with_color red "Nginx detected. Skipping installation. Configure Nginx manually.\n" >&5
 	else
 	        # Install nginx
 	        # Checking running web server
 	        lsof -i :80 | grep LISTEN
 	        if (( $? == 0 ))
 	        then
-	               	echo -e  "${RD}Port 80 taken.\n ${NC}" >&5
-	               	echo -e  "${RD}Skipping Nginx installation. Install Nginx manually.\n ${NC}" >&5
+	               	echo_with_color red "Port 80 taken.\n " >&5
+	               	echo_with_color red "Skipping Nginx installation. Install Nginx manually.\n " >&5
 	        else
 	        	if (( $CURRENT_OS == 27 ))
 			then
@@ -244,7 +269,7 @@ else
 			fi
 	        	if (( $? >= 1 ))
 	            	  then
-	                	echo -e  "${RD}\nCould not install Nginx. Exiting.${NC}" >&5
+	                	echo_with_color red "\nCould not install Nginx. Exiting." >&5
 	                	exit 1
 	        	fi
 	        	# Change php fpm configuration file
@@ -290,18 +315,18 @@ else
 	         	systemctl enable nginx.service && systemctl enable php-fpm.service
 			firewall-cmd --add-service=http
 
-	        	echo -e "${GN}Nginx installed.\n${NC}" >&5
+	        	echo_with_color green "Nginx installed.\n" >&5
 	        fi
 	fi
 fi
 
 ### Step 4. Configure PHP development tools
-echo -e "${GN}Step 4: Configuring PHP Extensions...\n${NC}" >&5
+echo_with_color green "Step 4: Configuring PHP Extensions...\n" >&5
 
 dnf install -y php-pear
 if (( $? >= 1 ))
 then
-	echo -e  "${RD}\n${ERROR_STRING}${NC}">&5
+	echo_with_color red "\n${ERROR_STRING}">&5
         exit 1
 fi
 
@@ -315,14 +340,14 @@ then
 	pecl install zip
 	if (( $? >= 1 ))
         then
-                echo -e  "${RD}\nZIP extension installation error.${NC}" >&5
+                echo_with_color red "\nZIP extension installation error." >&5
                 exit 1
         fi
 	echo "extension=zip.so" > /etc/php.d/20-zip.ini
         php -m | grep -E "^zip"
         if (( $? >= 1 ))
         then
-                echo -e  "${RD}\nExtension Zip have errors...${NC}" >&5
+                echo_with_color red "\nExtension Zip have errors..." >&5
         fi
 fi
 
@@ -333,14 +358,14 @@ then
 	printf "\n" | pecl install mcrypt-1.0.1
 	if (( $? >= 1 ))
 	then
-        	echo -e  "${RD}\nMcrypt extension installation error.${NC}" >&5
+        	echo_with_color red "\nMcrypt extension installation error." >&5
         	exit 1
 	fi
 	echo "extension=mcrypt.so" > /etc/php.d/20-mcrypt.ini
 	php -m | grep -E "^mcrypt"
 	if (( $? >= 1 ))
 	then
-	        echo -e  "${RD}\nMcrypt installation error.${NC}" >&5
+	        echo_with_color red "\nMcrypt installation error." >&5
 	fi
 fi
 
@@ -351,14 +376,14 @@ then
 	pecl install mongodb
 	if (( $? >= 1 ))
 	then
-	        echo -e  "${RD}\nMongo DB extension installation error.${NC}" >&5
+	        echo_with_color red "\nMongo DB extension installation error." >&5
 	        exit 1
 	fi
 	echo "extension=mongodb.so" > /etc/php.d/20-mongodb.ini
 	php -m | grep -E  "^mongodb"
 	if (( $? >= 1 ))
 	then
-	        echo -e  "${RD}\nMongoDB installation error.${NC}" >&5
+	        echo_with_color red "\nMongoDB installation error." >&5
 	fi
 fi
 
@@ -375,21 +400,21 @@ then
 	ACCEPT_EULA=Y yum install -y msodbcsql17 mssql-tools unixODBC-devel
         if (( $? >= 1 ))
         then
-                echo -e  "${RD}\nMS SQL Server extension installation error.${NC}" >&5
+                echo_with_color red "\nMS SQL Server extension installation error." >&5
                 exit 1
         fi
 
 	pecl install sqlsrv
 	if (( $? >= 1 ))
 	then
-	        echo -e  "${RD}\nMS SQL Server extension installation error.${NC}" >&5
+	        echo_with_color red "\nMS SQL Server extension installation error." >&5
 	        exit 1
 	fi
 	echo "extension=sqlsrv.so" > /etc/php.d/20-sqlsrv.ini
 	php -m | grep -E  "^sqlsrv"
 	if (( $? >= 1 ))
 	then
-	        echo -e  "${RD}\nMS SQL Server extension installation error.${NC}" >&5
+	        echo_with_color red "\nMS SQL Server extension installation error." >&5
 	fi
 fi
 
@@ -400,14 +425,14 @@ then
 	pecl install pdo_sqlsrv
 	if (( $? >= 1 ))
 	then
-	        echo -e  "${RD}\npdo_sqlsrv extension installation error.${NC}" >&5
+	        echo_with_color red "\npdo_sqlsrv extension installation error." >&5
 	        exit 1
 	fi
 	echo "extension=pdo_sqlsrv.so" > /etc/php.d/20-pdo_sqlsrv.ini
 	php -m | grep -E  "^pdo_sqlsrv"
 	if (( $? >= 1 ))
 	then
-		echo -e  "${RD}\nCould not install pdo_sqlsrv extension${NC}" >&5
+		echo_with_color red "\nCould not install pdo_sqlsrv extension" >&5
 	fi
 fi
 
@@ -417,7 +442,7 @@ if (( $? >= 1 ))
 then
 	if [[ $ORACLE == TRUE ]]
 	then
-		echo -e "${MG}Enter path to the Oracle drivers: [./]${NC} " >&5
+		echo_with_color magenta "Enter path to the Oracle drivers: [./] " >&5
         	read DRIVERS_PATH
         	if [[ -z $DRIVERS_PATH ]]
         	then
@@ -426,11 +451,11 @@ then
 		ls -f $DRIVERS_PATH/oracle-instantclient19.*.rpm
 		if (( $? == 0 ))
 		then
-			echo -e  "${GN}Drivers found.\n${NC}" >&5
+			echo_with_color green "Drivers found.\n" >&5
 	        	dnf install -y libaio systemtap-sdt-devel $DRIVERS_PATH/oracle-instantclient19.*.rpm
 	        	if (( $? >= 1 ))
 			then
-	        		echo -e  "${RD}\nOracle instant client installation error${NC}" >&5
+	        		echo_with_color red "\nOracle instant client installation error" >&5
 	        		exit 1
 			fi
 			echo "/usr/lib/oracle/19.5/client64/lib" > /etc/ld.so.conf.d/oracle-instantclient.conf
@@ -440,7 +465,7 @@ then
 			printf "\n" | pecl install oci8
 			if (( $? >= 1 ))
 			then
-	        		echo -e  "${RD}\nOracle instant client installation error${NC}" >&5
+	        		echo_with_color red "\nOracle instant client installation error" >&5
 	        		exit 1
 			fi
 			echo "extension=oci8.so" > /etc/php.d/20-oci8.ini
@@ -449,10 +474,10 @@ then
 			php -m | grep -E "^oci8"
 			if (( $? >= 1 ))
 	        	then
-	        	        echo -e  "${RD}\nCould not install oci8 extension.${NC}" >&5
+	        	        echo_with_color red "\nCould not install oci8 extension." >&5
 	        	fi
 		else
-			echo -e  "${RD}Drivers not found. Skipping...\n${NC}" >&5
+			echo_with_color red "Drivers not found. Skipping...\n" >&5
 		fi
 		unset DRIVERS_PATH
 	fi
@@ -464,7 +489,7 @@ if (( $? >= 1 ))
 then
         if [[ $DB2 == TRUE ]]
         then
-                echo -e "${MG}Enter path to the IBM DB2 drivers: [./]${NC} " >&5
+                echo_with_color magenta "Enter path to the IBM DB2 drivers: [./] " >&5
                 read DRIVERS_PATH
                 if [[ -z $DRIVERS_PATH ]]
                 then
@@ -473,7 +498,7 @@ then
                 tar xzf $DRIVERS_PATH/ibm_data_server_driver_package_linuxx64_v11.1.tar.gz -C /opt/
                 if (( $? == 0 ))
                 then
-                        echo -e  "${GN}Drivers found.\n${NC}" >&5
+                        echo_with_color green "Drivers found.\n" >&5
                         dnf install -y ksh
                         chmod +x /opt/dsdriver/installDSDriver
                         /usr/bin/ksh /opt/dsdriver/installDSDriver
@@ -491,7 +516,7 @@ then
                         make && make install
                         if (( $? >= 1 ))
                         then
-                                echo -e  "${RD}\nCould not make pdo_ibm extension.${NC}" >&5
+                                echo_with_color red "\nCould not make pdo_ibm extension." >&5
                                 exit 1
                         fi
                         echo "extension=pdo_ibm.so" > /etc/php.d/20-pdo_ibm.ini
@@ -499,7 +524,7 @@ then
                         php -m | grep pdo_ibm
                         if (( $? >= 1 ))
                         then
-                                echo -e  "${RD}\nCould not install pdo_ibm extension.${NC}" >&5
+                                echo_with_color red "\nCould not install pdo_ibm extension." >&5
 			else
 				### DRIVERS FOR IBM DB2 ( ONLY WITH KEY --with-db2 )
 				php -m | grep -E "^ibm_db2"
@@ -508,20 +533,20 @@ then
 					printf "/opt/dsdriver/ \n" | pecl install ibm_db2
 				        if (( $? >= 1 ))
 				        then
-						echo -e  "${RD}\nibm_db2 extension installation error.${NC}" >&5
+						echo_with_color red "\nibm_db2 extension installation error." >&5
 					        exit 1
 				        fi
 				        echo "extension=ibm_db2.so" > /etc/php.d/20-ibm_db2.ini
 					php -m | grep ibm_db2
 					if (( $? >= 1 ))
 					then
-					 	echo -e  "${RD}\nCould not install ibm_db2 extension.${NC}" >&5
+					 	echo_with_color red "\nCould not install ibm_db2 extension." >&5
 					fi
 				fi
 			fi
 
                 else
-                        echo -e  "${RD}Drivers not found. Skipping...\n${NC}" >&5
+                        echo_with_color red "Drivers not found. Skipping...\n" >&5
                 fi
                 unset DRIVERS_PATH
                 cd $CURRENT_PATH
@@ -551,7 +576,7 @@ then
 		yum install -y *.rpm
                	if (( $? >= 1 ))
                 then
-                        echo -e  "${RD}\ncassandra extension installation error.${NC}" >&5
+                        echo_with_color red "\ncassandra extension installation error." >&5
                         exit 1
                 fi
 		sed -i "s/7.1.99/7.2.99/" ./ext/package.xml
@@ -559,7 +584,7 @@ then
 		pecl install ./ext/package.xml
 		if (( $? >= 1 ))
 		then
-                        echo -e  "${RD}\ncassandra extension installation error.${NC}" >&5
+                        echo_with_color red "\ncassandra extension installation error." >&5
                         exit 1
                 fi
 		echo "extension=cassandra.so" > /etc/php.d/20-cassandra.ini
@@ -567,7 +592,7 @@ then
 		php -m | grep cassandra
 		if (( $? >= 1 ))
 		then
-                        echo -e  "${RD}\nCould not install ibm_db2 extension.${NC}" >&5
+                        echo_with_color red "\nCould not install ibm_db2 extension." >&5
                 fi
 		cd $CURRENT_PATH
 		rm -rf /opt/cassandra
@@ -581,7 +606,7 @@ then
         pecl install igbinary
         if (( $? >= 1 ))
         then
-                echo -e  "${RD}\nigbinary extension installation error.${NC}" >&5
+                echo_with_color red "\nigbinary extension installation error." >&5
                 exit 1
         fi
 
@@ -590,7 +615,7 @@ then
         php -m | grep igbinary
         if (( $? >= 1 ))
         then
-                echo -e  "${RD}\nCould not install ibm_db2 extension.${NC}" >&5
+                echo_with_color red "\nCould not install ibm_db2 extension." >&5
         fi
 fi
 
@@ -602,7 +627,7 @@ then
         pip install bunch
         if (( $? >= 1 ))
         then
-                echo -e  "${RD}\nCould not install python bunch extension.${NC}" >&5
+                echo_with_color red "\nCould not install python bunch extension." >&5
         fi
 fi
 
@@ -614,7 +639,7 @@ then
         pip3 install munch
         if (( $? >= 1 ))
         then
-                echo -e  "${RD}\nCould not install python3 munch extension.${NC}" >&5
+                echo_with_color red "\nCould not install python3 munch extension." >&5
         fi
 fi
 
@@ -626,7 +651,7 @@ then
 	dnf install -y nodejs
 	if (( $? >= 1 ))
 	then
-        	echo -e  "${RD}\n${ERROR_STRING}${NC}" >&5
+        	echo_with_color red "\n${ERROR_STRING}" >&5
         	exit 1
 	fi
 	NODE_PATH=$(whereis node | cut -d" " -f2)
@@ -639,7 +664,7 @@ then
         pecl install pcs-1.3.3
         if (( $? >= 1 ))
         then
-                echo -e  "${RD}\npcs extension installation error..${NC}" >&5
+                echo_with_color red "\npcs extension installation error.." >&5
                 exit 1
         fi
         echo "extension=pcs.so" > /etc/php.d/20-pcs.ini
@@ -647,7 +672,7 @@ then
         php -m | grep pcs
         if (( $? >= 1 ))
         then
-                echo -e  "${RD}\nCould not install pcs extension.${NC}" >&5
+                echo_with_color red "\nCould not install pcs extension." >&5
         fi
 fi
 
@@ -661,14 +686,14 @@ then
 	pecl install couchbase
 	if (( $? >= 1 ))
         then
-                echo -e  "${RD}\ncouchbase extension installation error.${NC}" >&5
+                echo_with_color red "\ncouchbase extension installation error." >&5
         	exit 1
 	fi
 	echo "extension=couchbase.so" > /etc/php.d/xcouchbase.ini
   	php -m | grep couchbase
 	if (( $? >= 1 ))
       	then
-        	echo -e  "${RD}\nCould not install couchbase extension.${NC}" >&5
+        	echo_with_color red "\nCould not install couchbase extension." >&5
   	fi
 fi
 
@@ -681,10 +706,10 @@ else
         service php-fpm restart
 fi
 
-echo -e "${GN}PHP Extensions configured.\n${NC}" >&5
+echo_with_color green "PHP Extensions configured.\n" >&5
 
 ### Step 5. Installing Composer
-echo -e "${GN}Step 5: Installing Composer...\n${NC}" >&5
+echo_with_color green "Step 5: Installing Composer...\n" >&5
 
 curl -sS https://getcomposer.org/installer -o /tmp/composer-setup.php
 
@@ -692,15 +717,15 @@ php /tmp/composer-setup.php --install-dir=/usr/local/bin --filename=composer
 
 if (( $? >= 1 ))
 then
-        echo -e  "${RD}\n${ERROR_STRING}${NC}" >&5
+        echo_with_color red "\n${ERROR_STRING}" >&5
         exit 1
 fi
-echo -e "${GN}Composer installed.\n${NC}" >&5
+echo_with_color green "Composer installed.\n" >&5
 
 ### Step 6. Installing MySQL
 if [[ $MYSQL == TRUE ]] ### Only with key --with-mysql
 then
-	echo -e "${GN}Step 6: Installing System Database for DreamFactory...\n${NC}" >&5
+	echo_with_color green "Step 6: Installing System Database for DreamFactory...\n" >&5
 
 	yum list installed | grep -E "mariadb-server.x86_64"
 	CHECK_MYSQL_INSTALLATION=$(echo $?)
@@ -713,34 +738,34 @@ then
 
 	if (( $CHECK_MYSQL_PROCESS == 0 )) || (( $CHECK_MYSQL_INSTALLATION == 0 )) || (( $CHECK_MYSQL_PORT == 0 ))
 	then
-		echo -e  "${RD}MySQL Database detected in the system. Skipping installation. \n${NC}" >&5
+		echo_with_color red "MySQL Database detected in the system. Skipping installation. \n" >&5
 		DB_FOUND=TRUE
 	else
-		echo -e  "${MG}Please choose a strong MySQL root user password: ${NC}" >&5
+		echo_with_color magenta "Please choose a strong MySQL root user password: " >&5
         	read DB_PASS
 		if [[ -z $DB_PASS ]]
                 then
                         until [[ ! -z $DB_PASS ]]
                         do
-                                echo -e "${RD}The password can't be empty!${NC}" >&5
+                                echo_with_color red "The password can't be empty!" >&5
                                 read DB_PASS
                         done
                 fi
 
-		echo -e  "${GN}\nPassword accepted.${NC}\n" >&5
+		echo_with_color green "\nPassword accepted.\n" >&5
 	        # Disable interactive mode in installation mariadb. Set generated above password.
 
 		dnf install -y mariadb-server
 	        if (( $? >= 1 ))
 	        then
-	                echo -e  "${RD}\n${ERROR_STRING}${NC}" >&5
+	                echo_with_color red "\n${ERROR_STRING}" >&5
 	                exit 1
 	        fi
 
 		service mariadb start
 		if (( $? >= 1 ))
         	then
-                	echo -e  "${RD}\nCould not start MariaDB.. Exit ${NC}" >&5
+                	echo_with_color red "\nCould not start MariaDB.. Exit " >&5
                 	exit 1
         	fi
 		mysqladmin -u root -h localhost password ${DB_PASS}
@@ -748,10 +773,10 @@ then
 
 	fi
 
-	echo -e "${GN}Database for DreamFactory installed.\n${NC}" >&5
+	echo_with_color green "Database for DreamFactory installed.\n" >&5
 
 	### Step 7. Configuring DreamFactory system database
-	echo -e "${GN}Step 7: Configure DreamFactory system database.\n${NC}" >&5
+	echo_with_color green "Step 7: Configure DreamFactory system database.\n" >&5
 
 	DB_INSTALLED=FALSE
 
@@ -759,7 +784,7 @@ then
 	# the DreamFactory system database.
 	if [[ $DB_FOUND == TRUE ]]
 	then
-	        echo -e "${MG}Is DreamFactory MySQL system database already configured? [Yy/Nn] ${NC}" >&5
+	        echo_with_color magenta "Is DreamFactory MySQL system database already configured? [Yy/Nn] " >&5
 	        read DB_ANSWER
 	        if [[ -z $DB_ANSWER ]]
 	        then
@@ -772,7 +797,7 @@ then
 		# MySQL system database is not installed, but MySQL is, so let's
 		# prompt the user for the root password.
 		else
-			echo -e "\n${MG}Enter MySQL root password: ${NC} " >&5
+			echo_with_color magenta "\nEnter MySQL root password:  " >&5
 	        	read DB_PASS
 
 	        	# Test DB access
@@ -783,8 +808,8 @@ then
 				TRYS=0
 	                	until [[ $ACCESS == TRUE ]]
 	                	do
-	                        	echo -e "${RD}\nPassword incorrect!\n ${NC}" >&5
-	                        	echo -e "${MG}Enter root user password:\n ${NC}" >&5
+	                        	echo_with_color red "\nPassword incorrect!\n " >&5
+	                        	echo_with_color magenta "Enter root user password:\n " >&5
 	                        	read DB_PASS
 	                        	mysql -h localhost -u root -p$DB_PASS -e"quit"
 	                        	if (( $? == 0 ))
@@ -794,7 +819,7 @@ then
 					TRYS=$((TRYS + 1))
 					if (( $TRYS == 3 ))
 					then
-						echo -e "\n${RD}Exit.\n${NC}" >&5
+						echo_with_color red "\nExit.\n" >&5
 						exit 1
 					fi
 	                	done
@@ -812,16 +837,16 @@ then
 	        mysql -h localhost -u root -p$DB_PASS -e"quit"
 	        if (( $? >= 1 ))
 	        then
-	                echo -e "${RD}Connection to Database failed. Exit \n${NC}" >&5
+	                echo_with_color red "Connection to Database failed. Exit \n" >&5
 	                exit 1
 	        fi
-		echo -e "\n${MG}What would you like to name your system database? (e.g. dreamfactory) ${NC}" >&5
+		echo_with_color magenta "\nWhat would you like to name your system database? (e.g. dreamfactory) " >&5
 		read DF_SYSTEM_DB
 		if [[ -z $DF_SYSTEM_DB ]]
                 then
 			until [[ ! -z $DF_SYSTEM_DB ]]
 			do
-				echo -e "\n${RD}The name can't be empty!${NC}" >&5
+				echo_with_color red "\nThe name can't be empty!" >&5
 				read DF_SYSTEM_DB
 			done
                 fi
@@ -829,29 +854,29 @@ then
 	        echo "CREATE DATABASE ${DF_SYSTEM_DB};" | mysql -u root -p${DB_PASS} 2>&5
                 if (( $? >= 1 ))
                 then
-                        echo -e "\n${RD}Creating database error. Exit${NC}" >&5
+                        echo_with_color red "\nCreating database error. Exit" >&5
                         exit 1
                 fi
 
-		echo -e "\n${MG}Please create a MySQL DreamFactory system database user name (e.g. dfadmin): ${NC}" >&5
+		echo_with_color magenta "\nPlease create a MySQL DreamFactory system database user name (e.g. dfadmin): " >&5
 		read DF_SYSTEM_DB_USER
 		if [[ -z $DF_SYSTEM_DB_USER ]]
                 then
                         until [[ ! -z $DF_SYSTEM_DB_USER ]]
                         do
-                                echo -e "${RD}The name can't be empty!${NC}" >&5
+                                echo_with_color red "The name can't be empty!" >&5
                                 read DF_SYSTEM_DB_USER
                         done
                 fi
 
 
-		echo -e "\n${MG}Please create a secure MySQL DreamFactory system database user password: ${NC}" >&5
+		echo_with_color magenta "\nPlease create a secure MySQL DreamFactory system database user password: " >&5
 		read DF_SYSTEM_DB_PASSWORD
                 if [[ -z $DF_SYSTEM_DB_PASSWORD ]]
 		then
                         until [[ ! -z $DF_SYSTEM_DB_PASSWORD ]]
                         do
-                                echo -e "${RD}The name can't be empty!${NC}" >&5
+                                echo_with_color red "The name can't be empty!" >&5
                                 read DF_SYSTEM_DB_PASSWORD
                         done
                 fi
@@ -859,23 +884,23 @@ then
 	        echo "GRANT ALL PRIVILEGES ON ${DF_SYSTEM_DB}.* to \"${DF_SYSTEM_DB_USER}\"@\"localhost\" IDENTIFIED BY \"${DF_SYSTEM_DB_PASSWORD}\";" | mysql -u root -p${DB_PASS} 2>&5
                 if (( $? >= 1 ))
                 then
-                        echo -e "\n${RD}Creating new user error. Exit${NC}" >&5
+                        echo_with_color red "\nCreating new user error. Exit" >&5
                         exit 1
                 fi
 
 		echo "FLUSH PRIVILEGES;" | mysql -u root -p${DB_PASS}
 
-	        echo -e "\n${GN}Database configuration finished.\n${NC}" >&5
+	        echo_with_color green "Database configuration finished.\n" >&5
 	else
-	        echo -e "${GN}Skipping...\n${NC}" >&5
+	        echo_with_color green "Skipping...\n" >&5
 	fi
 else
-	echo -e "${GN}Step 6: Skipping DreamFactory system database installation.\n" >&5
-	echo -e "Step 7: Skipping DreamFactory system database configuration.\n${NC}" >&5
+	echo_with_color green "Step 6: Skipping DreamFactory system database installation.\n" >&5
+	echo -e "Step 7: Skipping DreamFactory system database configuration.\n" >&5
 fi
 
 ### Step 8. Install DreamFactory
-echo -e "${GN}Step 8: Installing DreamFactory...\n ${NC}" >&5
+echo_with_color green "Step 8: Installing DreamFactory...\n " >&5
 
 ls -d /opt/dreamfactory
 if (( $? >= 1 ))
@@ -884,12 +909,12 @@ then
 	git clone https://github.com/dreamfactorysoftware/dreamfactory.git /opt/dreamfactory
 	if (( $? >= 1 ))
 	then
-        	echo -e  "${RD}\nCould not clone DreamFactory repository. Exiting. ${NC}" >&5
+        	echo_with_color red "\nCould not clone DreamFactory repository. Exiting. " >&5
         	exit 1
 	fi
 	DF_CLEAN_INSTALLATION=TRUE
 else
-	echo -e  "${RD}DreamFactory detected.\n${NC}" >&5
+	echo_with_color red "DreamFactory detected.\n" >&5
 	DF_CLEAN_INSTALLATION=FALSE
 fi
 
@@ -898,7 +923,7 @@ then
         ls /opt/dreamfactory/composer.{json,lock,json-dist}
         if (( $? == 0 ))
         then
-                echo -e  "${RD}Would you like to upgrade your instance? [Yy/Nn]${NC}" >&5
+                echo_with_color red "Would you like to upgrade your instance? [Yy/Nn]" >&5
                 read LICENSE_FILE_ANSWER
                 if [[ -z $LICENSE_FILE_ANSWER ]]
                 then
@@ -914,7 +939,7 @@ if [[ $LICENSE_FILE_EXIST == TRUE ]]
 then
         if [[  $LICENSE_FILE_ANSWER =~ ^[Yy]$ ]]
         then
-                echo -e "${MG}\nEnter path to license files: [./]${NC}"  >&5
+                echo_with_color magenta "\nEnter path to license files: [./]"  >&5
                 read LICENSE_PATH
                 if [[ -z $LICENSE_PATH ]]
                 then
@@ -923,18 +948,18 @@ then
                 ls $LICENSE_PATH/composer.{json,lock,json-dist}
                 if (( $? >= 1 ))
                 then
-                        echo -e  "${RD}\nLicenses not found. Skipping.\n${NC}" >&5
+                        echo_with_color red "\nLicenses not found. Skipping.\n" >&5
                 else
                         cp $LICENSE_PATH/composer.{json,lock,json-dist} /opt/dreamfactory/
                         LICENSE_INSTALLED=TRUE
-                        echo -e "\n${GN}Licenses file installed. ${NC}\n" >&5
-                        echo -e  "${GN}Installing DreamFactory...\n${NC}" >&5
+                        echo_with_color green "Licenses file installed. \n" >&5
+                        echo_with_color green "Installing DreamFactory...\n" >&5
                 fi
         else
-                echo -e  "\n${RD}Skipping...\n${NC}" >&5
+                echo_with_color red "\nSkipping...\n" >&5
         fi
 else
-        echo -e "${MG}Do you have a commercial DreamFactory license? [Yy/Nn]${NC} " >&5
+        echo_with_color magenta "Do you have a commercial DreamFactory license? [Yy/Nn] " >&5
         read LICENSE_FILE_ANSWER
         if [[ -z $LICENSE_FILE_ANSWER ]]
         then
@@ -942,7 +967,7 @@ else
         fi
         if [[  $LICENSE_FILE_ANSWER =~ ^[Yy]$ ]]
         then
-                echo -e "${MG}\nEnter path to license files: [./]${NC}"  >&5
+                echo_with_color magenta "\nEnter path to license files: [./]"  >&5
                 read LICENSE_PATH
                 if [[ -z $LICENSE_PATH ]]
                 then
@@ -951,16 +976,16 @@ else
                 ls $LICENSE_PATH/composer.{json,lock,json-dist}
                 if (( $? >= 1 ))
                 then
-                        echo -e  "${RD}\nLicenses not found. Skipping.\n${NC}" >&5
-                        echo -e  "${RD}Installing DreamFactory OSS version...\n${NC}" >&5
+                        echo_with_color red "\nLicenses not found. Skipping.\n" >&5
+                        echo_with_color red "Installing DreamFactory OSS version...\n" >&5
                 else
                         cp $LICENSE_PATH/composer.{json,lock,json-dist} /opt/dreamfactory/
                         LICENSE_INSTALLED=TRUE
-                        echo -e "\n${GN}Licenses file installed. ${NC}\n" >&5
-                        echo -e  "${GN}Installing DreamFactory...\n${NC}" >&5
+                        echo_with_color green "Licenses file installed. \n" >&5
+                        echo_with_color green "Installing DreamFactory...\n" >&5
                 fi
         else
-                echo -e  "\n${RD}Installing DreamFactory OSS version.\n${NC}" >&5
+                echo_with_color red "\nInstalling DreamFactory OSS version.\n" >&5
         fi
 
 fi
@@ -1018,7 +1043,7 @@ then
                 grep DF_LICENSE_KEY .env > /dev/null 2>&1 # Check for existing key.
                 if (( $? == 0 ))
                 then
-                        echo -e "\n${RD}The license key already installed. Are you want to install a new key? [Yy/Nn]${NC}"
+                        echo_with_color red "\nThe license key already installed. Are you want to install a new key? [Yy/Nn]"
                         read KEY_ANSWER
                         if [[ -z $KEY_ANSWER ]]
                         then
@@ -1032,14 +1057,14 @@ then
                         if [[ $KEY_ANSWER =~ ^[Yy]$ ]] #Install new key
                         then
                                 CURRENT_KEY=$(grep DF_LICENSE_KEY .env)
-                                echo -e "${MG}\nPlease provide your new license key:${NC}"
+                                echo_with_color magenta "\nPlease provide your new license key:"
                                 read LICENSE_KEY
                                 size=${#LICENSE_KEY}
 				if [[ -z $LICENSE_KEY ]]
                                 then
                                         until [[ ! -z $LICENSE_KEY ]]
                                         do
-                                                echo -e "${RD}\nThe field can't be empty!${NC}"
+                                                echo_with_color red "\nThe field can't be empty!"
                                                 read LICENSE_KEY
                                         	size=${#LICENSE_KEY}
 					done
@@ -1047,8 +1072,8 @@ then
                                 then
                                         until (( $size == 32 ))
                                         do
-                                                echo -e "${RD}\nInvalid License Key provided${NC}"
-                                                echo -e "${MG}\nPlease provide your license key:${NC}"
+                                                echo_with_color red "\nInvalid License Key provided"
+                                                echo_with_color magenta "\nPlease provide your license key:"
                                                 read LICENSE_KEY
                                                 size=${#LICENSE_KEY}
                                         done
@@ -1056,17 +1081,17 @@ then
                                 ###Change license key in .env file
                                 sed -i "s/$CURRENT_KEY/DF_LICENSE_KEY=$LICENSE_KEY/" .env
                         else
-                                echo -e "${RD}\nSkipping...${NC}" #Skip if key found in .env file and no need to update
+                                echo_with_color red "\nSkipping..." #Skip if key found in .env file and no need to update
                         fi
                 else
-                        echo -e "${MG}\nPlease provide your license key:${NC}" #Install key if not found existing key.
+                        echo_with_color magenta "\nPlease provide your license key:" #Install key if not found existing key.
                         read LICENSE_KEY
 			size=${#LICENSE_KEY}
                         if [[ -z $LICENSE_KEY ]]
                         then
                                 until [[ ! -z $LICENSE_KEY ]]
                                 do
-                                        echo -e "${RD}The field can't be empty!${NC}"
+                                        echo_with_color red "The field can't be empty!"
                                         read LICENSE_KEY
                                 	size=${#LICENSE_KEY}
 				done
@@ -1074,8 +1099,8 @@ then
                         then
                                 until (( $size == 32 ))
                                 do
-                                         echo -e "${RD}\nInvalid License Key provided${NC}"
-                                         echo -e "${MG}\nPlease provide your license key:${NC}"
+                                         echo_with_color red "\nInvalid License Key provided"
+                                         echo_with_color magenta "\nPlease provide your license key:"
                                          read LICENSE_KEY
                                          size=${#LICENSE_KEY}
                                 done
@@ -1111,18 +1136,18 @@ then
 	chcon -t httpd_sys_rw_content_t  bootstrap/cache/ -R
 fi
 
-echo -e "\n${GN}Installation finished! ${NC}"
+echo_with_color green "Installation finished! "
 
 if [[ $DEBUG == TRUE ]]
 then
-	echo -e "\n${RD}The log file saved in: /tmp/dreamfactory_installer.log ${NC}"
+	echo_with_color red "\nThe log file saved in: /tmp/dreamfactory_installer.log "
 
 fi
 ### Summary table
 if [[ $MYSQL_INSTALLED == TRUE ]]
 then
 	echo -e "\n "
-	echo -e "${MG}******************************"
+	echo_with_color magenta "******************************"
 	echo -e " DB for system table: mysql "
 	echo -e " DB host: 127.0.0.1         "
 	echo -e " DB port: 3306              "
@@ -1133,7 +1158,7 @@ then
 	echo -e " DB name: $(echo $DF_SYSTEM_DB) "
 	echo -e " DB user: $(echo $DF_SYSTEM_DB_USER)"
 	echo -e " DB password: $(echo $DF_SYSTEM_DB_PASSWORD)"
-	echo -e "******************************${NC}\n"
+	echo -e "******************************\n"
 fi
 
 exit 0

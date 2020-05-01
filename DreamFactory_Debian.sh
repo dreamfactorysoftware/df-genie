@@ -199,25 +199,25 @@ if [[ $APACHE == TRUE ]]; then ### Only with key --apache
       echo "extension=pdo_sqlsrv.so" >>/etc/php/${PHP_VERSION_INDEX}/apache2/conf.d/30-pdo_sqlsrv.ini
       echo "extension=sqlsrv.so" >>/etc/php/${PHP_VERSION_INDEX}/apache2/conf.d/20-sqlsrv.ini
       # Create apache2 site entry
-      WEB_PATH=/etc/apache2/sites-available/000-default.conf
-      echo '<VirtualHost *:80>' >$WEB_PATH
-      echo 'DocumentRoot /opt/dreamfactory/public' >>$WEB_PATH
-      echo '<Directory /opt/dreamfactory/public>' >>$WEB_PATH
-      echo 'AddOutputFilterByType DEFLATE text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript' >>$WEB_PATH
-      echo 'Options -Indexes +FollowSymLinks -MultiViews' >>$WEB_PATH
-      echo 'AllowOverride All' >>$WEB_PATH
-      echo 'AllowOverride None' >>$WEB_PATH
-      echo 'Require all granted' >>$WEB_PATH
-      echo 'RewriteEngine on' >>$WEB_PATH
-      echo 'RewriteBase /' >>$WEB_PATH
-      echo 'RewriteCond %{REQUEST_FILENAME} !-f' >>$WEB_PATH
-      echo 'RewriteCond %{REQUEST_FILENAME} !-d' >>$WEB_PATH
-      echo 'RewriteRule ^.*$ /index.php [L]' >>$WEB_PATH
-      echo '<LimitExcept GET HEAD PUT DELETE PATCH POST>' >>$WEB_PATH
-      echo 'Allow from all' >>$WEB_PATH
-      echo '</LimitExcept>' >>$WEB_PATH
-      echo '</Directory>' >>$WEB_PATH
-      echo '</VirtualHost>' >>$WEB_PATH
+      echo "
+<VirtualHost *:80>
+    DocumentRoot /opt/dreamfactory/public
+    <Directory /opt/dreamfactory/public>
+        AddOutputFilterByType DEFLATE text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript
+        Options -Indexes +FollowSymLinks -MultiViews
+        AllowOverride All
+        AllowOverride None
+        Require all granted
+        RewriteEngine on
+        RewriteBase /
+        RewriteCond %{REQUEST_FILENAME} !-f
+        RewriteCond %{REQUEST_FILENAME} !-d
+        RewriteRule ^.*$ /index.php [L]
+        <LimitExcept GET HEAD PUT DELETE PATCH POST>
+            Allow from all
+        </LimitExcept>
+    </Directory>
+</VirtualHost>" >/etc/apache2/sites-available/000-default.conf
 
       service apache2 restart
 
@@ -254,34 +254,44 @@ else
       sed -i 's/\;cgi\.fix\_pathinfo\=1/cgi\.fix\_pathinfo\=0/' $(php -i | sed -n '/^Loaded Configuration File => /{s:^.*> ::;p;}' | sed 's/cli/fpm/')
 
       # Create nginx site entry
-      WEB_PATH=/etc/nginx/sites-available/default
-      echo 'server {' >$WEB_PATH
-      echo 'listen 80 default_server;' >>$WEB_PATH
-      echo 'listen [::]:80 default_server ipv6only=on;' >>$WEB_PATH
-      echo 'root /opt/dreamfactory/public;' >>$WEB_PATH
-      echo 'index index.php index.html index.htm;' >>$WEB_PATH
-      echo 'server_name server_domain_name_or_IP;' >>$WEB_PATH
-      echo 'gzip on;' >>$WEB_PATH
-      echo 'gzip_disable "msie6";' >>$WEB_PATH
-      echo 'gzip_vary on;' >>$WEB_PATH
-      echo 'gzip_proxied any;' >>$WEB_PATH
-      echo 'gzip_comp_level 6;' >>$WEB_PATH
-      echo 'gzip_buffers 16 8k;' >>$WEB_PATH
-      echo 'gzip_http_version 1.1;' >>$WEB_PATH
-      echo 'gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript;' >>$WEB_PATH
-      echo 'location / {' >>$WEB_PATH
-      echo 'try_files $uri $uri/ /index.php?$args;}' >>$WEB_PATH
-      echo 'error_page 404 /404.html;' >>$WEB_PATH
-      echo 'error_page 500 502 503 504 /50x.html;' >>$WEB_PATH
-      echo 'location = /50x.html {' >>$WEB_PATH
-      echo 'root /usr/share/nginx/html;}' >>$WEB_PATH
-      echo 'location ~ \.php$ {' >>$WEB_PATH
-      echo 'try_files $uri =404;' >>$WEB_PATH
-      echo 'fastcgi_split_path_info ^(.+\.php)(/.+)$;' >>$WEB_PATH
-      echo "fastcgi_pass unix:/var/run/php/${PHP_VERSION}-fpm.sock;" >>$WEB_PATH
-      echo 'fastcgi_index index.php;' >>$WEB_PATH
-      echo 'fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;' >>$WEB_PATH
-      echo 'include fastcgi_params;}}' >>$WEB_PATH
+      echo "
+server {
+
+  listen 80 default_server;
+  listen [::]:80 default_server ipv6only=on;
+  root /opt/dreamfactory/public;
+  index index.php index.html index.htm;
+  server_name '';
+  gzip on;
+  gzip_disable \"msie6\";
+  gzip_vary on;
+  gzip_proxied any;
+  gzip_comp_level 6;
+  gzip_buffers 16 8k;
+  gzip_http_version 1.1;
+  gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript;
+  location / {
+
+    try_files \$uri \$uri/ /index.php?\$args;
+  }
+
+  error_page 404 /404.html;
+  error_page 500 502 503 504 /50x.html;
+
+  location = /50x.html {
+
+    root /usr/share/nginx/html
+  }
+  location ~ \.php$ {
+
+    try_files \$uri =404;
+    fastcgi_split_path_info ^(.+\.php)(/.+)$;
+    fastcgi_pass unix:/var/run/php/-fpm.sock;
+    fastcgi_index index.php;
+    fastcgi_param SCRIPT_FILENAME \$document_root\$fastcgi_script_name;
+    include fastcgi_params
+  }
+}" >/etc/nginx/sites-available/default
 
       service ${PHP_VERSION}-fpm restart && service nginx restart
 

@@ -347,7 +347,7 @@ fi
 php -m | grep -E "^oci8"
 if (($? >= 1)); then
   if [[ $ORACLE == TRUE ]]; then
-    echo_with_color magenta "Enter path to the Oracle drivers: [./] " >&5
+    echo_with_color magenta "Enter absolute path to the Oracle drivers, complete with trailing slash: [./] " >&5
     read DRIVERS_PATH
     if [[ -z $DRIVERS_PATH ]]; then
       DRIVERS_PATH="."
@@ -385,7 +385,7 @@ fi
 php -m | grep -E "^pdo_ibm"
 if (($? >= 1)); then
   if [[ $DB2 == TRUE ]]; then
-    echo_with_color magenta "Enter path to the IBM DB2 drivers: [./] " >&5
+    echo_with_color magenta "Enter absolute path to the IBM DB2 drivers, complete with trailing slash: [./] " >&5
     read DRIVERS_PATH
     if [[ -z $DRIVERS_PATH ]]; then
       DRIVERS_PATH="."
@@ -591,8 +591,8 @@ if [[ $MYSQL == TRUE ]]; then ### Only with key --with-mysql
   ps aux | grep -v grep | grep -E "^mysql"
   CHECK_MYSQL_PROCESS=$(echo $?)
 
-  lsof -i :3306 | grep LISTEN
-  CHECK_MYSQL_PORT=$(echo $?)
+	lsof -i :3306 | grep LISTEN
+	CHECK_MYSQL_PORT=$(echo $?)
 
   if (($CHECK_MYSQL_PROCESS == 0)) || (($CHECK_MYSQL_INSTALLATION == 0)) || (($CHECK_MYSQL_PORT == 0)); then
     echo_with_color red "MySQL Database detected in the system. Skipping installation. \n" >&5
@@ -764,7 +764,7 @@ fi
 
 if [[ $LICENSE_FILE_EXIST == TRUE ]]; then
   if [[ $LICENSE_FILE_ANSWER =~ ^[Yy]$ ]]; then
-    echo_with_color magenta "\nEnter path to license files: [./]" >&5
+    echo_with_color magenta "\nEnter absolute path to license files, complete with trailing slash: [./]" >&5
     read LICENSE_PATH
     if [[ -z $LICENSE_PATH ]]; then
       LICENSE_PATH="."
@@ -788,7 +788,7 @@ else
     LICENSE_FILE_ANSWER=N
   fi
   if [[ $LICENSE_FILE_ANSWER =~ ^[Yy]$ ]]; then
-    echo_with_color magenta "\nEnter path to license files: [./]" >&5
+    echo_with_color magenta "\nEnter absolute path to license files, complete with trailing slash: [./]" >&5
     read LICENSE_PATH
     if [[ -z $LICENSE_PATH ]]; then
       LICENSE_PATH="."

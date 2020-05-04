@@ -24,6 +24,13 @@ while [[ -n $1 ]]; do
   --with-apache) APACHE=TRUE ;;
   --with-db2) DB2=TRUE ;;
   --with-cassandra) CASSANDRA=TRUE ;;
+  --with-tag=*)
+    DREAMFACTORY_VERSION_TAG="${1/--with-tag=/}"
+    ;;
+  --with-tag)
+    DREAMFACTORY_VERSION_TAG="$2"
+    shift;
+    ;;
   --debug) DEBUG=TRUE ;;
   --help) HELP=TRUE ;;
   -h) HELP=TRUE ;;
@@ -43,6 +50,7 @@ if [[ $HELP == TRUE ]]; then
   echo "   --with-apache                  Install Apache2 web server for DreamFactory"
   echo "   --with-db2                     Install driver and PHP extensions for work with IBM DB2"
   echo "   --with-cassandra               Install driver and PHP extensions for work with Cassandra DB"
+  echo "   --with-tag=<tag name>          Install DreamFactory with specific version.  "
   echo "   --debug                        Enable installation process logging to file in /tmp folder."
   echo -e "   -h, --help                     Show this help\n"
   exit 1
@@ -261,7 +269,6 @@ server {
   listen [::]:80 default_server ipv6only=on;
   root /opt/dreamfactory/public;
   index index.php index.html index.htm;
-  server_name '';
   gzip on;
   gzip_disable \"msie6\";
   gzip_vary on;
@@ -830,7 +837,11 @@ echo_with_color green "Step 8: Installing DreamFactory...\n " >&5
 ls -d /opt/dreamfactory
 if (($? >= 1)); then
   mkdir -p /opt/dreamfactory
-  git clone https://github.com/dreamfactorysoftware/dreamfactory.git /opt/dreamfactory
+  if [[ -z "${DREAMFACTORY_VERSION_TAG}" ]]; then
+    git clone -b master --single-branch https://github.com/dreamfactorysoftware/dreamfactory.git /opt/dreamfactory
+  else
+    git clone -b "${DREAMFACTORY_VERSION_TAG}" --single-branch https://github.com/dreamfactorysoftware/dreamfactory.git /opt/dreamfactory
+  fi
   if (($? >= 1)); then
     echo_with_color red "\nCould not clone DreamFactory repository. Exiting. " >&5
     exit 1

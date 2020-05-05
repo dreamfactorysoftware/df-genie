@@ -10,8 +10,7 @@ CURRENT_PATH=$(pwd)
 
 DEFAULT_PHP_VERSION="php7.2"
 
-CURRENT_OS=$(cat /etc/os-release |
-  grep VERSION_ID |
+CURRENT_OS=$(grep -e VERSION_ID /etc/os-release |
   sed -e 's/VERSION_ID="//g' |
   sed -e 's/\.[0-9]*"$//g' |
   sed -e 's/"$//g')
@@ -84,7 +83,7 @@ echo_with_color() {
 }
 
 # Make sure script run as sudo
-if (($EUID != 0)); then
+if ((EUID != 0)); then
   echo -e "${RD}\nPlease run script with root privileges: su -c \"bash $0\" \n${NC}" >&5
   exit 1
 fi
@@ -94,7 +93,7 @@ CURRENT_USER=$(logname)
 
 if [[ -z $SUDO_USER ]] && [[ -z $CURRENT_USER ]]; then
   echo_with_color red "Enter username for installation DreamFactory:" >&5
-  read CURRENT_USER
+  read -r CURRENT_USER
   su "${CURRENT_USER}" -c "echo 'Checking user availability'" >&5
   if (($? >= 1)); then
     echo 'Please provide another user' >&5
@@ -293,7 +292,7 @@ server {
 
     try_files \$uri =404;
     fastcgi_split_path_info ^(.+\.php)(/.+)$;
-    fastcgi_pass unix:/var/run/php/-fpm.sock;
+    fastcgi_pass unix:/var/run/php/${PHP_VERSION}-fpm.sock;
     fastcgi_index index.php;
     fastcgi_param SCRIPT_FILENAME \$document_root\$fastcgi_script_name;
     include fastcgi_params
@@ -411,7 +410,7 @@ php -m | grep -E "^oci8"
 if (($? >= 1)); then
   if [[ $ORACLE == TRUE ]]; then
     echo_with_color magenta "Enter absolute path to the Oracle drivers, complete with trailing slash: [./] " >&5
-    read DRIVERS_PATH
+    read -r DRIVERS_PATH
     if [[ -z $DRIVERS_PATH ]]; then
       DRIVERS_PATH="."
     fi
@@ -445,7 +444,7 @@ php -m | grep -E "^pdo_ibm"
 if (($? >= 1)); then
   if [[ $DB2 == TRUE ]]; then
     echo_with_color magenta "Enter absolute path to the IBM DB2 drivers, complete with trailing slash: [./] " >&5
-    read DRIVERS_PATH
+    read -r DRIVERS_PATH
     if [[ -z $DRIVERS_PATH ]]; then
       DRIVERS_PATH="."
     fi
@@ -693,11 +692,11 @@ if [[ $MYSQL == TRUE ]]; then ### Only with key --with-mysql
     apt-get update
 
     echo_with_color magenta "Please choose a strong MySQL root user password: " >&5
-    read DB_PASS
+    read -r DB_PASS
     if [[ -z $DB_PASS ]]; then
       until [[ ! -z $DB_PASS ]]; do
         echo_with_color red "The password can't be empty!" >&5
-        read DB_PASS
+        read -r DB_PASS
       done
     fi
 
@@ -735,7 +734,7 @@ if [[ $MYSQL == TRUE ]]; then ### Only with key --with-mysql
   # the DreamFactory system database.
   if [[ $DB_FOUND == TRUE ]]; then
     echo_with_color magenta "Is DreamFactory MySQL system database already configured? [Yy/Nn] " >&5
-    read DB_ANSWER
+    read -r DB_ANSWER
     if [[ -z $DB_ANSWER ]]; then
       DB_ANSWER=Y
     fi
@@ -746,7 +745,7 @@ if [[ $MYSQL == TRUE ]]; then ### Only with key --with-mysql
     # prompt the user for the root password.
     else
       echo_with_color magenta "\nEnter MySQL root password:  " >&5
-      read DB_PASS
+      read -r DB_PASS
 
       # Test DB access
       mysql -h localhost -u root -p$DB_PASS -e"quit"
@@ -756,7 +755,7 @@ if [[ $MYSQL == TRUE ]]; then ### Only with key --with-mysql
         until [[ $ACCESS == TRUE ]]; do
           echo_with_color red "\nPassword incorrect!\n " >&5
           echo_with_color magenta "Enter root user password:\n " >&5
-          read DB_PASS
+          read -r DB_PASS
           mysql -h localhost -u root -p$DB_PASS -e"quit"
           if (($? == 0)); then
             ACCESS=TRUE
@@ -783,11 +782,11 @@ if [[ $MYSQL == TRUE ]]; then ### Only with key --with-mysql
       exit 1
     fi
     echo_with_color magenta "\nWhat would you like to name your system database? (e.g. dreamfactory) " >&5
-    read DF_SYSTEM_DB
+    read -r DF_SYSTEM_DB
     if [[ -z $DF_SYSTEM_DB ]]; then
       until [[ ! -z $DF_SYSTEM_DB ]]; do
         echo_with_color red "\nThe name can't be empty!" >&5
-        read DF_SYSTEM_DB
+        read -r DF_SYSTEM_DB
       done
     fi
 
@@ -797,20 +796,20 @@ if [[ $MYSQL == TRUE ]]; then ### Only with key --with-mysql
       exit 1
     fi
     echo_with_color magenta "\nPlease create a MySQL DreamFactory system database user name (e.g. dfadmin): " >&5
-    read DF_SYSTEM_DB_USER
+    read -r DF_SYSTEM_DB_USER
     if [[ -z $DF_SYSTEM_DB_USER ]]; then
       until [[ ! -z $DF_SYSTEM_DB_USER ]]; do
         echo_with_color red "The name can't be empty!" >&5
-        read DF_SYSTEM_DB_USER
+        read -r DF_SYSTEM_DB_USER
       done
     fi
 
     echo_with_color magenta "\nPlease create a secure MySQL DreamFactory system database user password: " >&5
-    read DF_SYSTEM_DB_PASSWORD
+    read -r DF_SYSTEM_DB_PASSWORD
     if [[ -z $DF_SYSTEM_DB_PASSWORD ]]; then
       until [[ ! -z $DF_SYSTEM_DB_PASSWORD ]]; do
         echo_with_color red "The name can't be empty!" >&5
-        read DF_SYSTEM_DB_PASSWORD
+        read -r DF_SYSTEM_DB_PASSWORD
       done
     fi
     # Generate password for user in DB
@@ -856,7 +855,7 @@ if [[ $DF_CLEAN_INSTALLATION == FALSE ]]; then
   ls /opt/dreamfactory/composer.{json,lock,json-dist}
   if (($? == 0)); then
     echo_with_color red "Would you like to upgrade your instance? [Yy/Nn]" >&5
-    read LICENSE_FILE_ANSWER
+    read -r LICENSE_FILE_ANSWER
     if [[ -z $LICENSE_FILE_ANSWER ]]; then
       LICENSE_FILE_ANSWER=N
     fi
@@ -869,7 +868,7 @@ fi
 if [[ $LICENSE_FILE_EXIST == TRUE ]]; then
   if [[ $LICENSE_FILE_ANSWER =~ ^[Yy]$ ]]; then
     echo_with_color magenta "\nEnter absolute path to license files, complete with trailing slash: [./]" >&5
-    read LICENSE_PATH
+    read -r LICENSE_PATH
     if [[ -z $LICENSE_PATH ]]; then
       LICENSE_PATH="."
     fi
@@ -887,13 +886,13 @@ if [[ $LICENSE_FILE_EXIST == TRUE ]]; then
   fi
 else
   echo_with_color magenta "Do you have a commercial DreamFactory license? [Yy/Nn] " >&5
-  read LICENSE_FILE_ANSWER
+  read -r LICENSE_FILE_ANSWER
   if [[ -z $LICENSE_FILE_ANSWER ]]; then
     LICENSE_FILE_ANSWER=N
   fi
   if [[ $LICENSE_FILE_ANSWER =~ ^[Yy]$ ]]; then
     echo_with_color magenta "\nEnter absolute path to license files, complete with trailing slash: [./]" >&5
-    read LICENSE_PATH
+    read -r LICENSE_PATH
     if [[ -z $LICENSE_PATH ]]; then
       LICENSE_PATH="."
     fi
@@ -959,7 +958,7 @@ if [[ $LICENSE_INSTALLED == TRUE || $DF_CLEAN_INSTALLATION == FALSE ]]; then
     grep DF_LICENSE_KEY .env >/dev/null 2>&1 # Check for existing key.
     if (($? == 0)); then
       echo_with_color red "\nThe license key already installed. Do you want to install a new key? [Yy/Nn]"
-      read KEY_ANSWER
+      read -r KEY_ANSWER
       if [[ -z $KEY_ANSWER ]]; then
         KEY_ANSWER=N
       fi
@@ -970,19 +969,19 @@ if [[ $LICENSE_INSTALLED == TRUE || $DF_CLEAN_INSTALLATION == FALSE ]]; then
       if [[ $KEY_ANSWER =~ ^[Yy]$ ]]; then #Install new key
         CURRENT_KEY=$(grep DF_LICENSE_KEY .env)
         echo_with_color magenta "\nPlease provide your new license key:"
-        read LICENSE_KEY
+        read -r LICENSE_KEY
         size=${#LICENSE_KEY}
         if [[ -z $LICENSE_KEY ]]; then
           until [[ ! -z $LICENSE_KEY ]]; do
             echo_with_color red "\nThe field can't be empty!"
-            read LICENSE_KEY
+            read -r LICENSE_KEY
             size=${#LICENSE_KEY}
           done
         elif (($size != 32)); then
           until (($size == 32)); do
             echo_with_color red "\nInvalid License Key provided"
             echo_with_color magenta "\nPlease provide your license key:"
-            read LICENSE_KEY
+            read -r LICENSE_KEY
             size=${#LICENSE_KEY}
           done
         fi
@@ -993,19 +992,19 @@ if [[ $LICENSE_INSTALLED == TRUE || $DF_CLEAN_INSTALLATION == FALSE ]]; then
       fi
     else
       echo_with_color magenta "\nPlease provide your license key:" #Install key if not found existing key.
-      read LICENSE_KEY
+      read -r LICENSE_KEY
       size=${#LICENSE_KEY}
       if [[ -z $LICENSE_KEY ]]; then
         until [[ ! -z $LICENSE_KEY ]]; do
           echo_with_color red "The field can't be empty!"
-          read LICENSE_KEY
+          read -r -r LICENSE_KEY
           size=${#LICENSE_KEY}
         done
       elif (($size != 32)); then
         until (($size == 32)); do
           echo_with_color red "\nInvalid License Key provided"
           echo_with_color magenta "\nPlease provide your license key:"
-          read LICENSE_KEY
+          read -r -r LICENSE_KEY
           size=${#LICENSE_KEY}
         done
       fi

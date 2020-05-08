@@ -10,7 +10,7 @@ CURRENT_PATH=$(pwd)
 
 DEFAULT_PHP_VERSION="php7.2"
 
-CURRENT_OS=$(cat /etc/os-release | grep VERSION_ID | cut -d "=" -f 2 | cut -c 2-3)
+CURRENT_OS=$(grep -e VERSION_ID /etc/os-release | cut -d "=" -f 2 | cut -c 2-3)
 
 ERROR_STRING="Installation error. Exiting"
 
@@ -83,7 +83,7 @@ echo_with_color() {
 }
 
 # Make sure script run as sudo
-if (($EUID != 0)); then
+if ((EUID != 0)); then
   echo -e "${RD}\nPlease run script with sudo: sudo bash $0 \n${NC}" >&5
   exit 1
 fi
@@ -93,10 +93,10 @@ CURRENT_USER=$(logname)
 
 if [[ -z $SUDO_USER ]] && [[ -z $CURRENT_USER ]]; then
   echo_with_color red " Enter username for installation DreamFactory:" >&5
-  read CURRENT_USER
+  read -r CURRENT_USER
 fi
 
-if [[ ! -z $SUDO_USER ]]; then
+if [[ -n $SUDO_USER ]]; then
   CURRENT_USER=${SUDO_USER}
 fi
 
@@ -136,7 +136,7 @@ PHP_VERSION=$(php --version 2>/dev/null | head -n 1 | cut -d " " -f 2 | cut -c 1
 MCRYPT=0
 
 if [[ $PHP_VERSION =~ ^-?[0-9]+$ ]]; then
-  if (($PHP_VERSION == 71)); then
+  if ((PHP_VERSION == 71)); then
     PHP_VERSION=php7.1
     MCRYPT=1
   else
@@ -184,12 +184,12 @@ if [[ $APACHE == TRUE ]]; then ### Only with key --apache
   echo_with_color green "Step 3: Installing Apache...\n" >&5
   # Check Apache installation status
   ps aux | grep -v grep | grep apache2
-  CHECK_APACHE_PROCESS=$(echo $?)
+  CHECK_APACHE_PROCESS=$?
 
   dpkg -l | grep apache2 | cut -d " " -f 3 | grep -E "apache2$"
-  CHECK_APACHE_INSTALLATION=$(echo $?)
+  CHECK_APACHE_INSTALLATION=$?
 
-  if (($CHECK_APACHE_PROCESS == 0)) || (($CHECK_APACHE_INSTALLATION == 0)); then
+  if ((CHECK_APACHE_PROCESS == 0)) || ((CHECK_APACHE_INSTALLATION == 0)); then
     echo_with_color red "Apache2 detected. Skipping installation. Configure Apache2 manually.\n" >&5
   else
     # Install Apache
@@ -205,8 +205,8 @@ if [[ $APACHE == TRUE ]]; then ### Only with key --apache
         exit 1
       fi
       a2enmod rewrite
-      echo "extension=pdo_sqlsrv.so" >>/etc/php/${PHP_VERSION_INDEX}/apache2/conf.d/30-pdo_sqlsrv.ini
-      echo "extension=sqlsrv.so" >>/etc/php/${PHP_VERSION_INDEX}/apache2/conf.d/20-sqlsrv.ini
+      echo "extension=pdo_sqlsrv.so" >>"/etc/php/${PHP_VERSION_INDEX}/apache2/conf.d/30-pdo_sqlsrv.ini"
+      echo "extension=sqlsrv.so" >>"/etc/php/${PHP_VERSION_INDEX}/apache2/conf.d/20-sqlsrv.ini"
       # Create apache2 site entry
       echo "
 <VirtualHost *:80>
@@ -239,12 +239,12 @@ else
 
   # Check nginx installation in the system
   ps aux | grep -v grep | grep nginx
-  CHECK_NGINX_PROCESS=$(echo $?)
+  CHECK_NGINX_PROCESS=$?
 
   dpkg -l | grep nginx | cut -d " " -f 3 | grep -E "nginx$"
-  CHECK_NGINX_INSTALLATION=$(echo $?)
+  CHECK_NGINX_INSTALLATION=$?
 
-  if (($CHECK_NGINX_PROCESS == 0)) || (($CHECK_NGINX_INSTALLATION == 0)); then
+  if ((CHECK_NGINX_PROCESS == 0)) || ((CHECK_NGINX_INSTALLATION == 0)); then
     echo_with_color red "Nginx detected. Skipping installation. Configure Nginx manually.\n" >&5
   else
     # Install nginx
@@ -260,7 +260,7 @@ else
         exit 1
       fi
       # Change php fpm configuration file
-      sed -i 's/\;cgi\.fix\_pathinfo\=1/cgi\.fix\_pathinfo\=0/' $(php -i | sed -n '/^Loaded Configuration File => /{s:^.*> ::;p;}' | sed 's/cli/fpm/')
+      sed -i 's/\;cgi\.fix\_pathinfo\=1/cgi\.fix\_pathinfo\=0/' "$(php -i | sed -n '/^Loaded Configuration File => /{s:^.*> ::;p;}' | sed 's/cli/fpm/')"
 
       # Create nginx site entry
       echo "
@@ -329,7 +329,7 @@ if (($? >= 1)); then
       echo_with_color red "\nMcrypt extension installation error." >&5
       exit 1
     fi
-    echo "extension=mcrypt.so" >/etc/php/${PHP_VERSION_INDEX}/mods-available/mcrypt.ini
+    echo "extension=mcrypt.so" >"/etc/php/${PHP_VERSION_INDEX}/mods-available/mcrypt.ini"
     phpenmod -s ALL mcrypt
   else
     apt-get install ${PHP_VERSION}-mcrypt
@@ -348,7 +348,7 @@ if (($? >= 1)); then
     echo_with_color red "\nMongo DB extension installation error." >&5
     exit 1
   fi
-  echo "extension=mongodb.so" >/etc/php/${PHP_VERSION_INDEX}/mods-available/mongodb.ini
+  echo "extension=mongodb.so" >"/etc/php/${PHP_VERSION_INDEX}/mods-available/mongodb.ini"
   phpenmod -s ALL mongodb
   php -m | grep -E "^mongodb"
   if (($? >= 1)); then
@@ -360,9 +360,9 @@ fi
 php -m | grep -E "^sqlsrv"
 if (($? >= 1)); then
   curl https://packages.microsoft.com/keys/microsoft.asc | apt-key add -
-  if (($CURRENT_OS == 16)); then
+  if ((CURRENT_OS == 16)); then
     curl https://packages.microsoft.com/config/ubuntu/16.04/prod.list >/etc/apt/sources.list.d/mssql-release.list
-  elif (($CURRENT_OS == 18)); then
+  elif ((CURRENT_OS == 18)); then
     curl https://packages.microsoft.com/config/ubuntu/18.04/prod.list >/etc/apt/sources.list.d/mssql-release.list
   else
     echo_with_color red " The script support only Ubuntu 16 and 18 versions. Exit.\n " >&5
@@ -376,7 +376,7 @@ if (($? >= 1)); then
     echo_with_color red "\nMS SQL Server extension installation error." >&5
     exit 1
   fi
-  echo "extension=sqlsrv.so" >/etc/php/${PHP_VERSION_INDEX}/mods-available/sqlsrv.ini
+  echo "extension=sqlsrv.so" >"/etc/php/${PHP_VERSION_INDEX}/mods-available/sqlsrv.ini"
   phpenmod -s ALL sqlsrv
   php -m | grep -E "^sqlsrv"
   if (($? >= 1)); then
@@ -392,7 +392,7 @@ if (($? >= 1)); then
     echo_with_color red "\npdo_sqlsrv extension installation error." >&5
     exit 1
   fi
-  echo "extension=pdo_sqlsrv.so" >/etc/php/${PHP_VERSION_INDEX}/mods-available/pdo_sqlsrv.ini
+  echo "extension=pdo_sqlsrv.so" >"/etc/php/${PHP_VERSION_INDEX}/mods-available/pdo_sqlsrv.ini"
   phpenmod -s ALL pdo_sqlsrv
   php -m | grep -E "^pdo_sqlsrv"
   if (($? >= 1)); then
@@ -405,7 +405,7 @@ php -m | grep -E "^oci8"
 if (($? >= 1)); then
   if [[ $ORACLE == TRUE ]]; then
     echo_with_color magenta "Enter absolute path to the Oracle drivers, complete with trailing slash: [./] " >&5
-    read DRIVERS_PATH
+    read -r DRIVERS_PATH
     if [[ -z $DRIVERS_PATH ]]; then
       DRIVERS_PATH="."
     fi
@@ -420,7 +420,7 @@ if (($? >= 1)); then
         echo_with_color red "\nOracle instant client installation error" >&5
         exit 1
       fi
-      echo "extension=oci8.so" >/etc/php/${PHP_VERSION_INDEX}/mods-available/oci8.ini
+      echo "extension=oci8.so" >"/etc/php/${PHP_VERSION_INDEX}/mods-available/oci8.ini"
       phpenmod -s ALL oci8
       php -m | grep oci8
       if (($? >= 1)); then
@@ -438,7 +438,7 @@ php -m | grep -E "^pdo_ibm"
 if (($? >= 1)); then
   if [[ $DB2 == TRUE ]]; then
     echo_with_color magenta "Enter absolute path to the IBM DB2 drivers, complete with trailing slash: [./] " >&5
-    read DRIVERS_PATH
+    read -r DRIVERS_PATH
     if [[ -z $DRIVERS_PATH ]]; then
       DRIVERS_PATH="."
     fi
@@ -450,7 +450,7 @@ if (($? >= 1)); then
       /usr/bin/ksh /opt/dsdriver/installDSDriver
       ln -s /opt/dsdriver/include /include
       git clone https://github.com/dreamfactorysoftware/PDO_IBM-1.3.4-patched.git /opt/PDO_IBM-1.3.4-patched
-      cd /opt/PDO_IBM-1.3.4-patched/
+      cd /opt/PDO_IBM-1.3.4-patched/ || exit 1
       phpize
       ./configure --with-pdo-ibm=/opt/dsdriver/lib
       make && make install
@@ -458,7 +458,7 @@ if (($? >= 1)); then
         echo_with_color red "\nCould not make pdo_ibm extension." >&5
         exit 1
       fi
-      echo "extension=pdo_ibm.so" >/etc/php/${PHP_VERSION_INDEX}/mods-available/pdo_ibm.ini
+      echo "extension=pdo_ibm.so" >"/etc/php/${PHP_VERSION_INDEX}/mods-available/pdo_ibm.ini"
       phpenmod -s ALL pdo_ibm
       php -m | grep pdo_ibm
       if (($? >= 1)); then
@@ -472,7 +472,7 @@ if (($? >= 1)); then
             echo_with_color red "\nibm_db2 extension installation error." >&5
             exit 1
           fi
-          echo "extension=ibm_db2.so" >/etc/php/${PHP_VERSION_INDEX}/mods-available/ibm_db2.ini
+          echo "extension=ibm_db2.so" >"/etc/php/${PHP_VERSION_INDEX}/mods-available/ibm_db2.ini"
           phpenmod -s ALL ibm_db2
           php -m | grep ibm_db2
           if (($? >= 1)); then
@@ -484,7 +484,7 @@ if (($? >= 1)); then
       echo_with_color red "Drivers not found. Skipping...\n" >&5
     fi
     unset DRIVERS_PATH
-    cd $CURRENT_PATH
+    cd "$CURRENT_PATH" || exit 1
     rm -rf /opt/PDO_IBM-1.3.4-patched
   fi
 fi
@@ -495,7 +495,7 @@ if (($? >= 1)); then
   if [[ $CASSANDRA == TRUE ]]; then
     apt install -y cmake libgmp-dev
     git clone https://github.com/datastax/php-driver.git /opt/cassandra
-    cd /opt/cassandra/
+    cd /opt/cassandra/ || exit 1
     git checkout v1.3.2 && git pull origin v1.3.2
     wget http://downloads.datastax.com/cpp-driver/ubuntu/18.04/cassandra/v2.10.0/cassandra-cpp-driver-dbg_2.10.0-1_amd64.deb
     wget http://downloads.datastax.com/cpp-driver/ubuntu/18.04/cassandra/v2.10.0/cassandra-cpp-driver-dev_2.10.0-1_amd64.deb
@@ -514,13 +514,13 @@ if (($? >= 1)); then
       echo_with_color red "\ncassandra extension installation error." >&5
       exit 1
     fi
-    echo "extension=cassandra.so" >/etc/php/${PHP_VERSION_INDEX}/mods-available/cassandra.ini
+    echo "extension=cassandra.so" >"/etc/php/${PHP_VERSION_INDEX}/mods-available/cassandra.ini"
     phpenmod -s ALL cassandra
     php -m | grep cassandra
     if (($? >= 1)); then
       echo_with_color red "\nCould not install ibm_db2 extension." >&5
     fi
-    cd $CURRENT_PATH
+    cd "$CURRENT_PATH" || exit 1
     rm -rf /opt/cassandra
   fi
 fi
@@ -534,7 +534,7 @@ if (($? >= 1)); then
     exit 1
   fi
 
-  echo "extension=igbinary.so" >/etc/php/${PHP_VERSION_INDEX}/mods-available/igbinary.ini
+  echo "extension=igbinary.so" >"/etc/php/${PHP_VERSION_INDEX}/mods-available/igbinary.ini"
   phpenmod -s ALL igbinary
   php -m | grep igbinary
   if (($? >= 1)); then
@@ -582,7 +582,7 @@ if (($? >= 1)); then
     echo_with_color red "\npcs extension installation error.." >&5
     exit 1
   fi
-  echo "extension=pcs.so" >/etc/php/${PHP_VERSION_INDEX}/mods-available/pcs.ini
+  echo "extension=pcs.so" >"/etc/php/${PHP_VERSION_INDEX}/mods-available/pcs.ini"
   phpenmod -s ALL pcs
   php -m | grep pcs
   if (($? >= 1)); then
@@ -593,11 +593,11 @@ fi
 ### INSTALL COUCHBASE
 php -m | grep -E "^couchbase"
 if (($? >= 1)); then
-  if (($CURRENT_OS == 16)); then
+  if ((CURRENT_OS == 16)); then
     wget -P /tmp http://packages.couchbase.com/releases/couchbase-release/couchbase-release-1.0-4-amd64.deb
     dpkg -i /tmp/couchbase-release-1.0-4-amd64.deb
 
-  elif (($CURRENT_OS == 18)); then
+  elif ((CURRENT_OS == 18)); then
     wget -O - http://packages.couchbase.com/ubuntu/couchbase.key | apt-key add -
     echo "deb http://packages.couchbase.com/ubuntu bionic bionic/main" >/etc/apt/sources.list.d/couchbase.list
   fi
@@ -609,7 +609,7 @@ if (($? >= 1)); then
     echo_with_color red "\ncouchbase extension installation error." >&5
     exit 1
   fi
-  echo "extension=couchbase.so" >/etc/php/${PHP_VERSION_INDEX}/mods-available/xcouchbase.ini
+  echo "extension=couchbase.so" >"/etc/php/${PHP_VERSION_INDEX}/mods-available/xcouchbase.ini"
   phpenmod -s ALL xcouchbase
   php -m | grep couchbase
   if (($? >= 1)); then
@@ -644,23 +644,23 @@ if [[ $MYSQL == TRUE ]]; then ### Only with key --with-mysql
   echo_with_color green "Step 6: Installing System Database for DreamFactory...\n" >&5
 
   dpkg -l | grep mysql | cut -d " " -f 3 | grep -E "^mysql" | grep -E -v "^mysql-client"
-  CHECK_MYSQL_INSTALLATION=$(echo $?)
+  CHECK_MYSQL_INSTALLATION=$?
 
   ps aux | grep -v grep | grep -E "^mysql"
-  CHECK_MYSQL_PROCESS=$(echo $?)
+  CHECK_MYSQL_PROCESS=$?
 
   lsof -i :3306 | grep LISTEN
-  CHECK_MYSQL_PORT=$(echo $?)
+  CHECK_MYSQL_PORT=$?
 
-  if (($CHECK_MYSQL_PROCESS == 0)) || (($CHECK_MYSQL_INSTALLATION == 0)) || (($CHECK_MYSQL_PORT == 0)); then
+  if ((CHECK_MYSQL_PROCESS == 0)) || ((CHECK_MYSQL_INSTALLATION == 0)) || ((CHECK_MYSQL_PORT == 0)); then
     echo_with_color red "MySQL Database detected in the system. Skipping installation. \n" >&5
     DB_FOUND=TRUE
   else
-    if (($CURRENT_OS == 16)); then
+    if ((CURRENT_OS == 16)); then
       apt-key adv --recv-keys --keyserver hkp://keyserver.ubuntu.com:80 0xF1656F24C74CD1D8
       add-apt-repository 'deb [arch=amd64,arm64,i386,ppc64el] http://mariadb.petarmaric.com/repo/10.3/ubuntu xenial main'
 
-    elif (($CURRENT_OS == 18)); then
+    elif ((CURRENT_OS == 18)); then
       apt-key adv --recv-keys --keyserver hkp://keyserver.ubuntu.com:80 0xF1656F24C74CD1D8
       add-apt-repository 'deb [arch=amd64,arm64,ppc64el] http://mariadb.petarmaric.com/repo/10.3/ubuntu bionic main'
     else
@@ -671,11 +671,11 @@ if [[ $MYSQL == TRUE ]]; then ### Only with key --with-mysql
     apt-get update
 
     echo_with_color magenta "Please choose a strong MySQL root user password: " >&5
-    read DB_PASS
+    read -r DB_PASS
     if [[ -z $DB_PASS ]]; then
-      until [[ ! -z $DB_PASS ]]; do
+      until [[ -n $DB_PASS ]]; do
         echo_with_color red "The password can't be empty!" >&5
-        read DB_PASS
+        read -r DB_PASS
       done
     fi
 
@@ -713,7 +713,7 @@ if [[ $MYSQL == TRUE ]]; then ### Only with key --with-mysql
   # the DreamFactory system database.
   if [[ $DB_FOUND == TRUE ]]; then
     echo_with_color magenta "Is DreamFactory MySQL system database already configured? [Yy/Nn] " >&5
-    read DB_ANSWER
+    read -r DB_ANSWER
     if [[ -z $DB_ANSWER ]]; then
       DB_ANSWER=Y
     fi
@@ -724,23 +724,23 @@ if [[ $MYSQL == TRUE ]]; then ### Only with key --with-mysql
     # prompt the user for the root password.
     else
       echo_with_color magenta "\nEnter MySQL root password:  " >&5
-      read DB_PASS
+      read -r DB_PASS
 
       # Test DB access
-      mysql -h localhost -u root -p$DB_PASS -e"quit"
+      mysql -h localhost -u root "-p$DB_PASS" -e"quit"
       if (($? >= 1)); then
         ACCESS=FALSE
         TRYS=0
         until [[ $ACCESS == TRUE ]]; do
           echo_with_color red "\nPassword incorrect!\n " >&5
           echo_with_color magenta "Enter root user password:\n " >&5
-          read DB_PASS
-          mysql -h localhost -u root -p$DB_PASS -e"quit"
+          read -r DB_PASS
+          mysql -h localhost -u root "-p$DB_PASS" -e"quit"
           if (($? == 0)); then
             ACCESS=TRUE
           fi
           TRYS=$((TRYS + 1))
-          if (($TRYS == 3)); then
+          if ((TRYS == 3)); then
             echo_with_color red "\nExit.\n" >&5
             exit 1
           fi
@@ -755,50 +755,50 @@ if [[ $MYSQL == TRUE ]]; then ### Only with key --with-mysql
   if [[ $DB_INSTALLED == FALSE ]]; then
 
     # Test DB access
-    mysql -h localhost -u root -p$DB_PASS -e"quit"
+    mysql -h localhost -u root "-p$DB_PASS" -e"quit"
     if (($? >= 1)); then
       echo_with_color red "Connection to Database failed. Exit \n" >&5
       exit 1
     fi
     echo_with_color magenta "\nWhat would you like to name your system database? (e.g. dreamfactory) " >&5
-    read DF_SYSTEM_DB
+    read -r DF_SYSTEM_DB
     if [[ -z $DF_SYSTEM_DB ]]; then
-      until [[ ! -z $DF_SYSTEM_DB ]]; do
+      until [[ -n $DF_SYSTEM_DB ]]; do
         echo_with_color red "\nThe name can't be empty!" >&5
-        read DF_SYSTEM_DB
+        read -r DF_SYSTEM_DB
       done
     fi
 
-    echo "CREATE DATABASE ${DF_SYSTEM_DB};" | mysql -u root -p${DB_PASS} 2>&5
+    echo "CREATE DATABASE ${DF_SYSTEM_DB};" | mysql -u root "-p${DB_PASS}" 2>&5
     if (($? >= 1)); then
       echo_with_color red "\nCreating database error. Exit" >&5
       exit 1
     fi
     echo_with_color magenta "\nPlease create a MySQL DreamFactory system database user name (e.g. dfadmin): " >&5
-    read DF_SYSTEM_DB_USER
+    read -r DF_SYSTEM_DB_USER
     if [[ -z $DF_SYSTEM_DB_USER ]]; then
-      until [[ ! -z $DF_SYSTEM_DB_USER ]]; do
+      until [[ -n $DF_SYSTEM_DB_USER ]]; do
         echo_with_color red "The name can't be empty!" >&5
-        read DF_SYSTEM_DB_USER
+        read -r DF_SYSTEM_DB_USER
       done
     fi
 
     echo_with_color magenta "\nPlease create a secure MySQL DreamFactory system database user password: " >&5
-    read DF_SYSTEM_DB_PASSWORD
+    read -r DF_SYSTEM_DB_PASSWORD
     if [[ -z $DF_SYSTEM_DB_PASSWORD ]]; then
-      until [[ ! -z $DF_SYSTEM_DB_PASSWORD ]]; do
+      until [[ -n $DF_SYSTEM_DB_PASSWORD ]]; do
         echo_with_color red "The name can't be empty!" >&5
-        read DF_SYSTEM_DB_PASSWORD
+        read -r DF_SYSTEM_DB_PASSWORD
       done
     fi
     # Generate password for user in DB
-    echo "GRANT ALL PRIVILEGES ON ${DF_SYSTEM_DB}.* to \"${DF_SYSTEM_DB_USER}\"@\"localhost\" IDENTIFIED BY \"${DF_SYSTEM_DB_PASSWORD}\";" | mysql -u root -p${DB_PASS} 2>&5
+    echo "GRANT ALL PRIVILEGES ON ${DF_SYSTEM_DB}.* to \"${DF_SYSTEM_DB_USER}\"@\"localhost\" IDENTIFIED BY \"${DF_SYSTEM_DB_PASSWORD}\";" | mysql -u root "-p${DB_PASS}" 2>&5
     if (($? >= 1)); then
       echo_with_color red "\nCreating new user error. Exit" >&5
       exit 1
     fi
 
-    echo "FLUSH PRIVILEGES;" | mysql -u root -p${DB_PASS}
+    echo "FLUSH PRIVILEGES;" | mysql -u root "-p${DB_PASS}"
 
     echo_with_color green "\nDatabase configuration finished.\n" >&5
   else
@@ -834,7 +834,7 @@ if [[ $DF_CLEAN_INSTALLATION == FALSE ]]; then
   ls /opt/dreamfactory/composer.{json,lock,json-dist}
   if (($? == 0)); then
     echo_with_color red "Would you like to upgrade your instance? [Yy/Nn]" >&5
-    read LICENSE_FILE_ANSWER
+    read -r LICENSE_FILE_ANSWER
     if [[ -z $LICENSE_FILE_ANSWER ]]; then
       LICENSE_FILE_ANSWER=N
     fi
@@ -847,7 +847,7 @@ fi
 if [[ $LICENSE_FILE_EXIST == TRUE ]]; then
   if [[ $LICENSE_FILE_ANSWER =~ ^[Yy]$ ]]; then
     echo_with_color magenta "\nEnter absolute path to license files, complete with trailing slash: [./]" >&5
-    read LICENSE_PATH
+    read -r LICENSE_PATH
     if [[ -z $LICENSE_PATH ]]; then
       LICENSE_PATH="."
     fi
@@ -865,13 +865,13 @@ if [[ $LICENSE_FILE_EXIST == TRUE ]]; then
   fi
 else
   echo_with_color magenta "Do you have a commercial DreamFactory license? [Yy/Nn] " >&5
-  read LICENSE_FILE_ANSWER
+  read -r LICENSE_FILE_ANSWER
   if [[ -z $LICENSE_FILE_ANSWER ]]; then
     LICENSE_FILE_ANSWER=N
   fi
   if [[ $LICENSE_FILE_ANSWER =~ ^[Yy]$ ]]; then
     echo_with_color magenta "\nEnter absolute path to license files, complete with trailing slash: [./]" >&5
-    read LICENSE_PATH
+    read -r LICENSE_PATH
     if [[ -z $LICENSE_PATH ]]; then
       LICENSE_PATH="."
     fi
@@ -891,34 +891,34 @@ else
 
 fi
 
-chown -R $CURRENT_USER /opt/dreamfactory && cd /opt/dreamfactory
+chown -R "$CURRENT_USER" /opt/dreamfactory && cd /opt/dreamfactory || exit 1
 
 # If Oracle is not installed, add the --ignore-platform-reqs option
 # to composer command
 if [[ $ORACLE == TRUE ]]; then
-  sudo -u $CURRENT_USER bash -c "/usr/local/bin/composer install --no-dev"
+  sudo -u "$CURRENT_USER" bash -c "/usr/local/bin/composer install --no-dev"
 else
-  sudo -u $CURRENT_USER bash -c "/usr/local/bin/composer install --no-dev --ignore-platform-reqs"
+  sudo -u "$CURRENT_USER" bash -c "/usr/local/bin/composer install --no-dev --ignore-platform-reqs"
 fi
 
 ### Shutdown silent mode because php artisan df:setup and df:env will get troubles with prompts.
 exec 1>&5 5>&-
 
 if [[ $DB_INSTALLED == FALSE ]]; then
-  sudo -u $CURRENT_USER bash -c "php artisan df:env -q \
+  sudo -u "$CURRENT_USER" bash -c "php artisan df:env -q \
                 --db_connection=mysql \
                 --db_host=127.0.0.1 \
                 --db_port=3306 \
-                --db_database=$(echo $DF_SYSTEM_DB) \
-                --db_username=$(echo $DF_SYSTEM_DB_USER) \
-                --db_password=$(echo $DF_SYSTEM_DB_PASSWORD | sed 's/['\'']//g')"
+                --db_database=${DF_SYSTEM_DB} \
+                --db_username=${DF_SYSTEM_DB_USER} \
+                --db_password=${DF_SYSTEM_DB_PASSWORD//\'/}"
   sed -i 's/\#DB\_CHARSET\=/DB\_CHARSET\=utf8/g' .env
   sed -i 's/\#DB\_COLLATION\=/DB\_COLLATION\=utf8\_unicode\_ci/g' .env
   echo -e "\n"
   MYSQL_INSTALLED=TRUE
 
 elif [[ ! $MYSQL == TRUE && $DF_CLEAN_INSTALLATION == TRUE ]] || [[ $DB_INSTALLED == TRUE ]]; then
-  sudo -u $CURRENT_USER bash -c "php artisan df:env"
+  sudo -u "$CURRENT_USER" bash -c "php artisan df:env"
   if [[ $DB_INSTALLED == TRUE ]]; then
     sed -i 's/\#DB\_CHARSET\=/DB\_CHARSET\=utf8/g' .env
     sed -i 's/\#DB\_COLLATION\=/DB\_COLLATION\=utf8\_unicode\_ci/g' .env
@@ -926,18 +926,18 @@ elif [[ ! $MYSQL == TRUE && $DF_CLEAN_INSTALLATION == TRUE ]] || [[ $DB_INSTALLE
 fi
 
 if [[ $DF_CLEAN_INSTALLATION == TRUE ]]; then
-  sudo -u $CURRENT_USER bash -c "php artisan df:setup"
+  sudo -u "$CURRENT_USER" bash -c "php artisan df:setup"
 fi
 
 if [[ $LICENSE_INSTALLED == TRUE || $DF_CLEAN_INSTALLATION == FALSE ]]; then
   php artisan migrate --seed
-  sudo -u $CURRENT_USER bash -c "php artisan config:clear -q"
+  sudo -u "$CURRENT_USER" bash -c "php artisan config:clear -q"
 
   if [[ $LICENSE_INSTALLED == TRUE ]]; then
     grep DF_LICENSE_KEY .env >/dev/null 2>&1 # Check for existing key.
     if (($? == 0)); then
       echo_with_color red "\nThe license key already installed. Are you want to install a new key? [Yy/Nn]"
-      read KEY_ANSWER
+      read -r KEY_ANSWER
       if [[ -z $KEY_ANSWER ]]; then
         KEY_ANSWER=N
       fi
@@ -948,19 +948,19 @@ if [[ $LICENSE_INSTALLED == TRUE || $DF_CLEAN_INSTALLATION == FALSE ]]; then
       if [[ $KEY_ANSWER =~ ^[Yy]$ ]]; then #Install new key
         CURRENT_KEY=$(grep DF_LICENSE_KEY .env)
         echo_with_color magenta "\nPlease provide your new license key:"
-        read LICENSE_KEY
+        read -r LICENSE_KEY
         size=${#LICENSE_KEY}
         if [[ -z $LICENSE_KEY ]]; then
-          until [[ ! -z $LICENSE_KEY ]]; do
+          until [[ -n $LICENSE_KEY ]]; do
             echo_with_color red "\nThe field can't be empty!"
-            read LICENSE_KEY
+            read -r LICENSE_KEY
             size=${#LICENSE_KEY}
           done
-        elif (($size != 32)); then
-          until (($size == 32)); do
+        elif ((size != 32)); then
+          until ((size == 32)); do
             echo_with_color red "\nInvalid License Key provided"
             echo_with_color magenta "\nPlease provide your license key:"
-            read LICENSE_KEY
+            read -r LICENSE_KEY
             size=${#LICENSE_KEY}
           done
         fi
@@ -971,19 +971,19 @@ if [[ $LICENSE_INSTALLED == TRUE || $DF_CLEAN_INSTALLATION == FALSE ]]; then
       fi
     else
       echo_with_color magenta "\nPlease provide your license key:" #Install key if not found existing key.
-      read LICENSE_KEY
+      read -r LICENSE_KEY
       size=${#LICENSE_KEY}
       if [[ -z $LICENSE_KEY ]]; then
-        until [[ ! -z $LICENSE_KEY ]]; do
+        until [[ -n $LICENSE_KEY ]]; do
           echo_with_color red "The field can't be empty!"
-          read LICENSE_KEY
+          read -r LICENSE_KEY
           size=${#LICENSE_KEY}
         done
-      elif (($size != 32)); then
-        until (($size == 32)); do
+      elif ((size != 32)); then
+        until ((size == 32)); do
           echo_with_color red "\nInvalid License Key provided"
           echo_with_color magenta "\nPlease provide your license key:"
-          read LICENSE_KEY
+          read -r LICENSE_KEY
           size=${#LICENSE_KEY}
         done
       fi
@@ -995,7 +995,7 @@ if [[ $LICENSE_INSTALLED == TRUE || $DF_CLEAN_INSTALLATION == FALSE ]]; then
 fi
 
 chmod -R 2775 /opt/dreamfactory/
-chown -R www-data:$CURRENT_USER /opt/dreamfactory/
+chown -R "www-data:$CURRENT_USER" /opt/dreamfactory/
 
 ### Uncomment nodejs in .env file
 grep -E "^#DF_NODEJS_PATH" .env >/dev/null
@@ -1003,7 +1003,7 @@ if (($? == 0)); then
   sed -i "s,\#DF_NODEJS_PATH=/usr/local/bin/node,DF_NODEJS_PATH=$NODE_PATH," .env
 fi
 
-sudo -u $CURRENT_USER bash -c "php artisan cache:clear -q"
+sudo -u "$CURRENT_USER" bash -c "php artisan cache:clear -q"
 
 echo_with_color green "\nInstallation finished! "
 
@@ -1021,9 +1021,9 @@ if [[ $MYSQL_INSTALLED == TRUE ]]; then
   if [[ ! $DB_FOUND == TRUE ]]; then
     echo -e " DB root password: $DB_PASS"
   fi
-  echo -e " DB name: $(echo $DF_SYSTEM_DB) "
-  echo -e " DB user: $(echo $DF_SYSTEM_DB_USER)"
-  echo -e " DB password: $(echo $DF_SYSTEM_DB_PASSWORD)"
+  echo -e " DB name: ${DF_SYSTEM_DB}"
+  echo -e " DB user: ${DF_SYSTEM_DB_USER}"
+  echo -e " DB password: ${DF_SYSTEM_DB_PASSWORD}"
   echo -e "******************************\n"
 fi
 

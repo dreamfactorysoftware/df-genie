@@ -932,7 +932,7 @@ if [[ $DB_INSTALLED == FALSE ]]; then
                 --db_port=3306 \
                 --db_database=${DF_SYSTEM_DB} \
                 --db_username=${DF_SYSTEM_DB_USER} \
-                --db_password=$(echo $DF_SYSTEM_DB_PASSWORD | sed 's/['\'']//g')"
+                --db_password=${DF_SYSTEM_DB_PASSWORD//\'/}"
   sed -i 's/\#DB\_CHARSET\=/DB\_CHARSET\=utf8/g' .env
   sed -i 's/\#DB\_COLLATION\=/DB\_COLLATION\=utf8\_unicode\_ci/g' .env
   echo -e "\n"
